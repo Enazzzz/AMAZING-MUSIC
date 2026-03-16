@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Extracted Amazon Music internals (proprietary, local reference only)
+exported/
+
+# Logs
+*.log
+
+# IDE / Editor
+.cursor/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Environment
+.env
+.env.*

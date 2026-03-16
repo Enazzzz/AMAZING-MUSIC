@@ -167,59 +167,165 @@ window.App.$store.state.player.model.outputDeviceAttributes.devices // all audio
 
 ---
 
-## 5. Sending Commands (Vuex Mutations/Actions)
+## 5. Sending Commands — Direct Internal Function Calls (Proven Working)
 
-Commands are dispatched via the Vuex store. Evaluate these via CDP `Runtime.evaluate`.
+Amazon Music uses an internal **Command pattern** and a **Player module** (webpack module `"0903"`)
+that wraps a native bridge (`s["a"].execute("Player.*")`). Vuex `dispatch("player/*")` actions
+update state but **do not drive the audio engine**. To actually control playback, you must call
+the internal Player module's methods directly.
 
-### Playback Control
+### Accessing the Internal Player Module via CDP
+
+The Player module is not exposed on `window` directly. To reach it, inject a webpack require
+resolver via CDP, then load module `"0903"`:
+
 ```javascript
-// Play
-window.App.$store.dispatch('player/play')
+// Step 1: Resolve webpack require (run once per session)
+(function() {
+    if (typeof window.__amazon_require__ === "function") return;
+    if (!window.webpackJsonp || !window.webpackJsonp.push) return;
+    window.webpackJsonp.push([
+        ["__am_req_chunk__"],
+        {
+            "__am_req_module__": function(module, exports, req) {
+                window.__amazon_require__ = req;
+            }
+        },
+        [["__am_req_module__"]]
+    ]);
+})()
 
-// Pause
-window.App.$store.dispatch('player/pause')
-
-// Skip to next
-window.App.$store.dispatch('player/next')
-
-// Go to previous
-window.App.$store.dispatch('player/previous')
-
-// Seek to position (milliseconds)
-window.App.$store.dispatch('player/seekTo', { position: 60000 })
-
-// Set volume (0.0 - 1.0)
-window.App.$store.dispatch('player/setVolume', { volume: 0.8 })
-
-// Toggle mute
-window.App.$store.dispatch('player/toggleMute')
-
-// Toggle shuffle
-window.App.$store.dispatch('player/toggleShuffle')
-
-// Set repeat ('NONE' | 'ALL' | 'ONE')
-window.App.$store.dispatch('player/setRepeat', { repeatSetting: 'ALL' })
+// Step 2: Load the Player module and call methods
+(function() {
+    var req = window.__amazon_require__;
+    var playerModule = req("0903");
+    var player = playerModule.a;  // the exported controller object
+    player.playNext();            // actually skips the track
+})()
 ```
 
-> **Note:** Exact action names were inferred from the Vuex store structure and Vue DevTools conventions.
-> If an action fails silently, inspect `window.App.$store._actions` to enumerate all registered actions:
-> ```javascript
-> Object.keys(window.App.$store._actions)
-> ```
+**Status:** Tested and confirmed working via CDP `Runtime.evaluate` from a Node script.
+`player.playNext()` successfully skips tracks in real time.
 
-### Enumerate All Actions
+### Player Module API (webpack module `"0903"`)
+
+All methods below are on the exported object (`playerModule.a`). Each delegates to
+the native bridge via `s["a"].execute("Player.<method>")`.
+
+| Method | Args | Description |
+|---|---|---|
+| `playNext()` | none | Skip to next track (respects skip limits for free-tier) |
+| `playPrevious()` | none | Go to previous track |
+| `setPaused(paused)` | `boolean` | `true` = pause, `false` = resume |
+| `setVolume(vol)` | `number` 0.0–1.0 | Set playback volume |
+| `toggleMute()` | none | Toggle mute on/off |
+| `setShuffle(on)` | `boolean` | `true` = enable shuffle, `false` = disable |
+| `toggleRepeat()` | none | Cycle repeat mode (NONE → ALL → ONE → NONE) |
+| `seek(posMs, type)` | `number`, optional type | Seek to position in milliseconds |
+| `setAudioQuality(q)` | `string` | Set quality (`'STANDARD'`, `'HD'`, `'ULTRA_HD'`) |
+| `setOutputDevice(id)` | `string` | Switch audio output device by device ID |
+| `startPlayback(e, t, a, i, n, r)` | complex | Start playing a specific track/collection |
+| `startCollectionPlayback(e, t, a)` | complex | Start playing a collection |
+| `stopPlayback(reason)` | `string` | Stop playback entirely |
+| `insertNext(tracks, t, a)` | array | Insert tracks to play next in queue |
+| `appendTracks(tracks, t, a)` | array | Append tracks to end of queue |
+| `reorderPlayables(e, t)` | complex | Reorder items in play queue |
+| `removeFromPlayQueue(ids)` | `string[]` | Remove tracks from queue by ID |
+| `toggleLoudnessNormalization()` | none | Toggle loudness normalization |
+| `setExclusiveMode(on)` | `boolean` | Toggle exclusive audio device mode |
+| `toggleAutoplay()` | none | Toggle autoplay |
+
+### Player Module Architecture
+
+The module uses a **strategy pattern**. The exported object (`t["a"]`) delegates each method
+to `this.getStrategy(methodName)`, which walks an array of strategy objects and calls the first
+one that implements the method. The default strategy (internal `_` object) calls the native
+bridge directly:
+
+```
+t["a"].playNext()
+  → getStrategy("playNext")
+    → _.playNext()
+      → s["a"].execute("Player.playNext")   // native CEF bridge call
+```
+
+### Player Module State (read-only)
+
+The module also exposes reactive state objects:
+
+```javascript
+var player = req("0903").a;
+player.model              // playerModel — current track, state, audio attributes, queue
+player.settings           // playerSettings — volume, shuffle, repeat, quality, tempo
+player.playbackProgress   // playbackProgress — currentTime, buffered (ms)
+```
+
+These are the same objects backing `window.App.$store.state.player.*`.
+
+### Vuex Dispatch (State-Only — Does NOT Drive Audio)
+
+> **WARNING:** `window.App.$store.dispatch("player/next")` and similar Vuex actions
+> update the Vuex store state but **do not actually control the audio engine**.
+> They are useful only for reading state reactively. For actual playback control,
+> use the Player module methods above.
+
+Vuex dispatches that fire during navigation (confirmed via hook):
+
+```javascript
+window.App.$store.dispatch("history/addParamsToRoute", { index: N, params: {...} })
+window.App.$store.dispatch("history/add", { name: "findLanding", path: "/find", ... })
+window.App.$store.dispatch("history/modifyCurrentRoute", { ... })
+```
+
+### Search (Vuex Commits)
+
+Search uses Vuex **commits** (mutations), not dispatches:
+
+```javascript
+this.$store.commit("search/searchForKeyword", { keyword: "query", ... })
+this.$store.commit("search/changeKeyword", { keyword: "query" })
+```
+
+### All Known Command Classes (from app.js)
+
+These are the internal Command pattern classes. Each has a `commandName` and an
+`operation(callback)` method. They are instantiated and called via `new Cmd().execute()`.
+
+| Command Name | Webpack Module ID | Description |
+|---|---|---|
+| `PlayNextTrack` | `4e8c` | Skip to next track |
+| `PlayPreviousTrack` | `37c0` | Go to previous track |
+| `PausePlayback` | `516f` | Pause playback |
+| `ResumePlayback` | `a034` | Resume playback |
+| `TogglePlayPause` | `e135` | Toggle play/pause |
+| `SetVolume` | `64c8` | Set volume (constructor takes 0.0–1.0) |
+| `ToggleShuffle` | `8fd3` | Toggle shuffle |
+| `ToggleRepeat` | `e95e` | Toggle repeat mode |
+| `ToggleMute` | `52519` area | Toggle mute |
+| `StartPlayback` | `57456` area | Start playing a track |
+| `StopPlayback` | `47152` area | Stop playback |
+| `IncreaseVolume` | `58681` area | Increase volume by step |
+| `DecreaseVolume` | `48119` area | Decrease volume by step |
+| `AddToLibrary` | `4380` area | Add track to library |
+| `FollowArtist` | `11765` area | Follow an artist |
+| `DeletePlaylist` | `34009` area | Delete a playlist |
+| `StartDownload` | `7379` area | Start offline download |
+| `ShowSettings` | `42445` area | Open settings view |
+| `ShowAddToPlaylistDialog` | `35758` area | Open add-to-playlist dialog |
+| `GetLibraryPlaylists` | `35735` area | Fetch library playlists |
+
+### Enumerate All Actions / Mutations
+
 ```javascript
 JSON.stringify(Object.keys(window.App.$store._actions))
-```
-
-### Enumerate All Mutations
-```javascript
 JSON.stringify(Object.keys(window.App.$store._mutations))
 ```
 
 ---
 
-## 6. CDP Helper — Python
+## 6. CDP Helpers
+
+### Python
 
 ```python
 import websocket, json, urllib.request
@@ -245,6 +351,45 @@ def cdp_eval(ws, expression, msg_id=1):
 ws = websocket.create_connection(get_ws_url())
 value = cdp_eval(ws, "window.App.$store.state.player.model.state")
 print(value)  # 'PLAYING'
+```
+
+### Node.js / TypeScript
+
+```typescript
+import http from "node:http";
+import WebSocket from "ws";
+
+type CdpTarget = { url?: string; webSocketDebuggerUrl?: string };
+
+async function getMorphoTarget(port = 9222): Promise<CdpTarget> {
+    return new Promise((resolve, reject) => {
+        http.get(`http://localhost:${port}/json`, (res) => {
+            let data = "";
+            res.on("data", (chunk) => { data += chunk; });
+            res.on("end", () => {
+                const targets = JSON.parse(data) as CdpTarget[];
+                const morpho = targets.find(t => t.url && t.url.includes("amazon.com/morpho"));
+                morpho ? resolve(morpho) : reject(new Error("No Morpho target"));
+            });
+        }).on("error", reject);
+    });
+}
+
+async function sendCdp(ws: WebSocket, msg: { id: number; method: string; params?: unknown }): Promise<unknown> {
+    return new Promise((resolve, reject) => {
+        const handler = (raw: WebSocket.RawData) => {
+            const parsed = JSON.parse(raw.toString()) as { id?: number };
+            if (parsed.id === msg.id) { ws.off("message", handler); resolve(parsed); }
+        };
+        ws.on("message", handler);
+        ws.send(JSON.stringify(msg), (err) => { if (err) { ws.off("message", handler); reject(err); } });
+    });
+}
+
+// Usage
+const target = await getMorphoTarget();
+const ws = new WebSocket(target.webSocketDebuggerUrl!);
+// ... sendCdp(ws, { id: 1, method: "Runtime.evaluate", params: { expression: "...", returnByValue: true } })
 ```
 
 ---
@@ -349,11 +494,171 @@ Install location: `%LOCALAPPDATA%\Amazon Music\`
 
 ---
 
-## 13. Important Caveats
+## 13. Webpack Bundle Internals
+
+Amazon Music's frontend is bundled with **webpack** into a single `app.js` file.
+The bundle uses the `webpackJsonp` global to load chunks.
+
+### Key Module IDs
+
+| Module ID | Export | Purpose |
+|---|---|---|
+| `"0903"` | `.a` | **Player controller** — all playback methods, reactive state |
+| `"6586"` | `.a` | **Native bridge** — `s["a"].execute("Player.*")` and `s["a"].get("Player")` |
+| `"2ef0"` | lodash | Utility library (lodash) |
+| `"4e8c"` | Command class | `PlayNextTrack` command |
+| `"37c0"` | Command class | `PlayPreviousTrack` command |
+| `"516f"` | Command class | `PausePlayback` command |
+| `"a034"` | Command class | `ResumePlayback` command |
+| `"e135"` | Command class | `TogglePlayPause` command |
+| `"8fd3"` | Command class | `ToggleShuffle` command |
+| `"e95e"` | Command class | `ToggleRepeat` command |
+| `"64c8"` | Command class | `SetVolume` command |
+
+### Resolving `require` at Runtime
+
+Webpack does not expose its internal `require` function globally. To access it:
+
+```javascript
+// Inject a synthetic chunk that captures the require function
+window.webpackJsonp.push([
+    ["__am_req_chunk__"],
+    {
+        "__am_req_module__": function(module, exports, req) {
+            window.__amazon_require__ = req;
+        }
+    },
+    [["__am_req_module__"]]
+]);
+
+// Now use it to load any internal module
+var player = window.__amazon_require__("0903").a;
+```
+
+This technique works because `webpackJsonp.push` processes the synthetic chunk's factory
+function, which receives the real `require` as its third argument. The function stashes it
+on `window` for later use.
+
+**Important:** This must be injected via CDP `Runtime.evaluate` from an external process.
+Running it from the DevTools console may not work reliably because the synthetic chunk
+may not meet all internal conditions for execution.
+
+### Native Bridge (`s["a"]` / module `"6586"`)
+
+The native bridge is the lowest-level interface between the web app and the CEF host.
+All Player module methods ultimately call through it:
+
+```javascript
+s["a"].execute("Player.playNext")       // fire-and-forget command
+s["a"].execute("Player.setPaused", true) // command with argument
+s["a"].get("Player")                     // returns { playerModel, playerSettings, playbackProgress }
+```
+
+The bridge communicates with the native C++ layer via CEF message passing.
+
+---
+
+## 14. UI Element Selectors (data-qaid)
+
+Amazon Music uses `data-qaid` attributes on player control buttons. These can be used
+as a fallback for DOM-based interaction, though direct function calls are preferred.
+
+| Selector | Element |
+|---|---|
+| `button[data-qaid="next"]` | Next track button |
+| `button[data-qaid="previous"]` | Previous track button |
+| `button[data-qaid="playPause"]` | Play/Pause toggle button |
+| `button[data-qaid="shuffle"]` | Shuffle toggle button |
+| `button[data-qaid="repeat"]` | Repeat toggle button |
+
+### Clicking via CDP
+
+```javascript
+document.querySelector('button[data-qaid="next"]').click()
+```
+
+> **Note:** DOM clicks work but are fragile — Amazon can change selectors at any time.
+> Prefer direct Player module calls (Section 5) for all production use.
+
+---
+
+## 15. Proven Control Flow (End-to-End)
+
+This is the confirmed working flow for controlling Amazon Music from an external process:
+
+```
+External Process (Node.js / Electron)
+  │
+  ├── 1. Launch Amazon Music with --remote-debugging-port=9222
+  │
+  ├── 2. GET http://localhost:9222/json → find Morpho target
+  │
+  ├── 3. Connect WebSocket to webSocketDebuggerUrl
+  │
+  ├── 4. Inject webpack require resolver (once per session):
+  │       Runtime.evaluate → webpackJsonp.push([...])
+  │       → window.__amazon_require__ now available
+  │
+  ├── 5. Load Player module:
+  │       var player = window.__amazon_require__("0903").a
+  │
+  ├── 6. Call methods directly:
+  │       player.playNext()
+  │       player.setPaused(true)
+  │       player.setVolume(0.5)
+  │       player.toggleRepeat()
+  │       player.setShuffle(true)
+  │
+  └── 7. Read state via Vuex:
+          window.App.$store.state.player.model.*
+          window.App.$store.state.player.settings.*
+          window.App.$store.state.player.progress.*
+```
+
+### What Works vs. What Doesn't
+
+| Approach | Works? | Notes |
+|---|---|---|
+| Direct Player module calls (`req("0903").a.*`) | **Yes** | Drives the actual audio engine. Proven. |
+| DOM button clicks (`data-qaid` selectors) | **Yes** | Works but fragile. Fallback only. |
+| Vuex `dispatch("player/*")` | **Partially** | Updates state/history but does NOT drive audio. |
+| Vuex `commit("search/*")` | **Yes** | Triggers search. |
+| Vue Router `push()` | **Yes** | Navigates between views. |
+| Reading Vuex state | **Yes** | Full read access to all player/app state. |
+
+---
+
+## 16. Important Caveats
 
 - **CEF CSP blocks outbound fetch/XHR from the Morpho page to localhost.** Do not try to push data out from inside the app. Pull via CDP instead.
 - **Old JS engine in CEF** — optional chaining (`?.`), nullish coalescing (`??`), and some ES2020+ features may not work in injected JS. Use `&&` guards.
 - **No official API** — Amazon Music Web API is closed beta. This approach uses internal app state only.
 - **DRM** — audio streams are Widevine-encrypted. This documentation covers metadata only, not audio.
-- **Fragility** — Vuex action names and store shape may change with app updates. Pin your Amazon Music version if stability matters.
+- **Fragility** — Webpack module IDs, Vuex action names, and store shape may change with app updates. Pin your Amazon Music version if stability matters.
+- **Webpack require injection** — The `webpackJsonp.push` trick works from CDP injection but may not work from the DevTools console. Always inject via `Runtime.evaluate` from an external script.
+- **Player module export** — The Player controller is on `require("0903").a` (not `.default`). If the bundle changes, check for `.a`, `.default`, or the module itself.
 - **ToS** — personal/non-commercial use only. Do not redistribute audio metadata at scale or build competing services.
+
+---
+
+## 17. Project File Map
+
+| Path | Purpose |
+|---|---|
+| `src/main/main.ts` | Electron main process entry point |
+| `src/main/amazonLauncher.ts` | Amazon Music process lifecycle, CDP connection, state polling |
+| `src/main/cdp/cdpClient.ts` | Minimal CDP WebSocket client |
+| `src/main/cdp/amazonBridge.ts` | JS expression builders for CDP evaluate calls |
+| `src/main/windows/win32WindowHider.ts` | Native window hiding via node-window-manager |
+| `src/main/ipc/registerIpcHandlers.ts` | Electron IPC handler registration |
+| `src/main/launcherConfig.ts` | Launcher configuration and defaults |
+| `src/main/configStore.ts` | Persistent config storage (amazonExePath) |
+| `src/preload/preload.ts` | Secure bridge between main and renderer |
+| `src/renderer/app.ts` | Renderer UI logic |
+| `src/renderer/index.html` | Renderer HTML with CSP |
+| `src/renderer/styles.css` | Renderer styles |
+| `src/shared/types.ts` | Shared TypeScript interfaces |
+| `tests/dev-direct-next.ts` | Standalone test: direct Player.playNext() via CDP |
+| `tests/dev-next.ts` | Standalone test: DOM button click via CDP |
+| `exported/app.js` | Extracted Amazon Music webpack bundle (reference) |
+| `exported/html.html` | Extracted Amazon Music UI HTML (reference) |

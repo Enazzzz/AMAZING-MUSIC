@@ -1,0 +1,138 @@
+:root {
+	color-scheme: dark;
+	--bg: #070b14;
+	--panel: #11182a;
+	--panel-soft: #1a243d;
+	--accent: #4de4bb;
+	--accent-soft: #193f39;
+	--text: #e8f0ff;
+	--text-muted: #95a6c7;
+	--danger: #ff7070;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	background: radial-gradient(circle at top, #0f1730 0%, var(--bg) 50%, #05070d 100%);
+	color: var(--text);
+	font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+#app {
+	display: grid;
+	grid-template-columns: 280px 1fr;
+	min-height: 100vh;
+}
+
+.sidebar {
+	background: linear-gradient(180deg, #0e1424 0%, #0a0f1d 100%);
+	border-right: 1px solid #1f2b45;
+	padding: 18px;
+}
+
+.brand {
+	font-size: 18px;
+	font-weight: 700;
+	margin-bottom: 12px;
+	letter-spacing: 0.08em;
+}
+
+.view-button {
+	display: block;
+	width: 100%;
+	margin: 8px 0;
+	padding: 12px;
+	border: 1px solid #243252;
+	background: #11182a;
+	color: var(--text);
+	border-radius: 8px;
+	cursor: pointer;
+	text-align: left;
+}
+
+.view-button.active {
+	border-color: var(--accent);
+	background: var(--accent-soft);
+}
+
+.content {
+	display: grid;
+	grid-template-rows: auto auto 1fr;
+	gap: 16px;
+	padding: 18px;
+}
+
+.panel {
+	background: linear-gradient(180deg, #121b2d 0%, #101728 100%);
+	border: 1px solid #22314f;
+	border-radius: 12px;
+	padding: 14px;
+}
+
+.row {
+	display: flex;
+	gap: 10px;
+	align-items: center;
+}
+
+.row.wrap {
+	flex-wrap: wrap;
+}
+
+button {
+	padding: 10px 12px;
+	background: #1a2742;
+	color: var(--text);
+	border: 1px solid #2d446e;
+	border-radius: 8px;
+	cursor: pointer;
+}
+
+button:hover {
+	background: #213255;
+}
+
+input[type="text"] {
+	width: 100%;
+	padding: 10px 12px;
+	border-radius: 8px;
+	border: 1px solid #2d446e;
+	background: #0e1629;
+	color: var(--text);
+}
+
+input[type="range"] {
+	width: 180px;
+}
+
+.muted {
+	color: var(--text-muted);
+}
+
+.grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 12px;
+}
+
+.list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	max-height: 360px;
+	overflow: auto;
+}
+
+.list li {
+	padding: 8px 0;
+	border-bottom: 1px solid #1f2e49;
+}
+
+.warning {
+	color: var(--danger);
+	font-weight: 600;
+	margin-top: 10px;
+}

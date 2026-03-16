@@ -1,0 +1,40 @@
+{
+  "name": "amazing-music",
+  "version": "1.0.0",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/copy-assets.mjs",
+    "start": "npm run build && electron .",
+    "dev": "npm run build && electron .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev:next": "ts-node ./tests/dev-next.ts",
+    "dev:direct-next": "ts-node ./tests/dev-direct-next.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Enazzzz/AMAZING-MUSIC.git"
+  },
+  "keywords": ["amazon-music", "electron", "cdp", "reverse-engineering", "player"],
+  "author": "Enazzzz",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Enazzzz/AMAZING-MUSIC/issues"
+  },
+  "homepage": "https://github.com/Enazzzz/AMAZING-MUSIC#readme",
+  "description": "Custom Electron launcher for Amazon Music Desktop with direct internal API control via CDP",
+  "dependencies": {
+    "electron": "^41.0.2",
+    "node-window-manager": "^2.2.4",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/ws": "^8.18.1",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
+  }
+}
