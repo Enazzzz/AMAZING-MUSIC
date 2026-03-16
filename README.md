@@ -128,7 +128,13 @@ All methods on `require("0903").a` — the internal Player controller:
 
 ## Disclaimer
 
-This project is for **personal, non-commercial, educational use only**. It does not extract, intercept, or redistribute any audio streams (which are Widevine DRM-encrypted). It interacts solely with metadata and playback controls through the app's own internal APIs. Amazon Music is a trademark of Amazon.com, Inc.
+This project is for **personal, non-commercial, educational use only**. It does not extract, intercept, or redistribute any audio streams (which are Widevine DRM-encrypted). It interacts solely with metadata and playback controls through the app's own internal APIs.
+
+**Amazon Music**, the Amazon Music logo, and all related names, marks, and branding are trademarks or registered trademarks of **Amazon.com, Inc.** or its affiliates. This project is not affiliated with, endorsed by, or sponsored by Amazon in any way.
+
+All intellectual property rights in the Amazon Music application, its source code, assets, and services belong to their respective owners.
+
+**The author(s) of this project accept no responsibility or liability for any misuse of this code.** By using this software, you agree that you do so entirely at your own risk and that you are solely responsible for compliance with all applicable laws and terms of service.
 
 ## License
 
