@@ -312,7 +312,31 @@ These are the internal Command pattern classes. Each has a `commandName` and an
 | `StartDownload` | `7379` area | Start offline download |
 | `ShowSettings` | `42445` area | Open settings view |
 | `ShowAddToPlaylistDialog` | `35758` area | Open add-to-playlist dialog |
+| `AppendTracksToPlaylist` | `f734` | **Add track(s) to a playlist** — Command class; actual work via bridge `Library.appendTracksToPlaylist` |
 | `GetLibraryPlaylists` | `35735` area | Fetch library playlists |
+
+### AppendTracksToPlaylist (add track(s) to playlist)
+
+The command that actually adds tracks to a playlist is **`AppendTracksToPlaylist`** (webpack module **`f734`**). When you add to a playlist from the UI, **AppendTracksToPlaylist** runs; when inspecting the app, **CheckSelectionEligibility** (module **`d08e`**) runs **after** the append. (In the bundle, the command’s `operation` awaits CheckSelectionEligibility then calls the bridge; the observed order at runtime may differ or there may be a second eligibility check after the append.)
+
+The real work is done by the **native bridge** (same module as Player: **`6586`**):
+
+```javascript
+// Bridge call (module 6586)
+l["a"].execute("Library.appendTracksToPlaylist", playlistId, trackObjectsArray, detectDuplicates, skipDuplicates, viewType, successCallback, errorCallback, optionalCallback || noop)
+```
+
+- **playlistId** — string (playlist id from library).
+- **trackObjectsArray** — array of track objects; each must have at least **`asin`** (or full track object from `player.model.currentPlayable.track`). Length must be &gt; 0. The Vue component passes `$store.state.selection.selectedObjects` or a single track; the bridge accepts the same shape.
+- **detectDuplicates** / **skipDuplicates** — booleans; use `false` for simple append.
+- **viewType** — string or null (e.g. from drag context; use `"library"` or `null` if unknown).
+- **successCallback** / **errorCallback** — callbacks; pass no-op if you don't need them.
+
+**Get playlist list:** Same bridge: `execute("Library.getPlaylists")` returns an object; when ready it has `.playlists.user` (array of playlists with `id`, `title`, etc.). Some code paths use it synchronously (`.playlists.user`); others observe it. For a minimal test, call `bridge.execute("Library.getPlaylists")` and read `.playlists.user` (you may need to wait or use a callback depending on the bridge API).
+
+**Vue component flow (for reference):** The sidebar calls `new ia["a"](playlist, playlist.totalTrackCount, selectedObjects, viewType).execute()` where `ia = require("f734")` — so the Command constructor is `(playlistObject, numTracksInPlaylist, selectionArray, viewType)`. The bridge is then called with `playlist.id` and that selection array.
+
+**Observed in testing:** **Only adding the currently playing track reliably works.** Use a **full plain copy** of the track (e.g. `JSON.parse(JSON.stringify(currentPlayable.track))`) and pass it to `Library.appendTracksToPlaylist` with viewType `"prime"`. The native side appears to expect a track object that has the same shape as the player’s internal model (e.g. from `currentPlayable.track`). (1) A **minimal** track object (asin/id only) can trigger **"something went wrong, please contact customer service"**. (2) **Add by ASIN via getCatalogMetadata:** You can resolve a track with `Media.getCatalogMetadata([{ asin, type: "track", id, albumAsin }], callback)` and merge the callback result into a track object, then call `Library.appendTracksToPlaylist`. The call may **succeed** (no error, no popup) but **no track is appended** — the catalog metadata shape does not match what the native append API expects. So for now, **add-to-playlist by ASIN** in the launcher should be implemented as “play this track (or ensure it’s current), then add the current track to the playlist.” (3) **Add by ASIN without playing:** Use the app's item normalizer **module 3e08 export "g"** (same as single-item "Add to playlist" in the UI): build item `{ asin, id, uniqueId, type: "track", context: "prime" }`, call `require("3e08").g([item], "prime")`, then `Library.appendTracksToPlaylist(playlistId, selection, ...)`. Optionally run CheckSelectionEligibility (d08e) after. (4) Use a dedicated test playlist; in one early run the playlist was cleared (likely due to payload shape).
 
 ### Enumerate All Actions / Mutations
 
@@ -320,6 +344,30 @@ These are the internal Command pattern classes. Each has a `commandName` and an
 JSON.stringify(Object.keys(window.App.$store._actions))
 JSON.stringify(Object.keys(window.App.$store._mutations))
 ```
+
+### Where to start: Add to playlist
+
+To implement “add current track (or track ID) to playlist” with a small number of direct calls, follow this order:
+
+1. **Run the discovery script** (optional; for current track payload): `npm run dev:discover-playlist` — gives `asin`, `trackUniqueId`; confirms there are no playlist actions or `library`/`playlist` in state.
+
+2. **Find the implementation in the bundle**  
+   In your local **exported/app.js** (or the live bundle), search for:
+   - `addTracksToPlaylist`, `addToPlaylist` (function or method names)
+   - `commandName: "AddTracksToPlaylist"` or `commandName: "AddToPlaylist"` (Command that runs when you confirm in the add-to-playlist dialog)
+   - `ShowAddToPlaylistDialog` (module `35758`) — what it calls when the user picks a playlist and confirms
+   - `GetLibraryPlaylists` (module `35735`) — how playlists are fetched and their id/name shape
+
+3. **Call it like playback**  
+   - If there is a **Vuex action** (e.g. `dispatch('playlist/addTracks', { trackId, playlistId })`), try calling it via CDP first; if it actually performs the add (and isn’t UI-only), you’re done.
+   - If the real work is in a **Command** or internal module (like playback), resolve that module with `window.__amazon_require__("<id>")` and call the method that adds tracks to a playlist, passing the same payload shape you saw in the bundle.
+
+4. **Payload shape**  
+   You will need at least:
+   - **Track identifier**: `asin` or `trackUniqueId` from the current track (or from the track you want to add).
+   - **Playlist identifier**: from `GetLibraryPlaylists` or from store state (e.g. `state.library.playlists`). Often an `id` or `playlistId`.
+
+Once you have the exact action name or module + method and the payload shape, wire it the same way as playback: one or two CDP `Runtime.evaluate` calls (and, if needed, the same webpack require injection as in §5).
 
 ---
 
@@ -641,7 +689,29 @@ External Process (Node.js / Electron)
 
 ---
 
-## 17. Project File Map
+## 17. Using This Documentation in Another Project
+
+This document is self-contained so that a Cursor (or other) agent in a **different codebase** can implement Amazon Music control without this repo. Provide:
+
+1. **This file** (`amazon-music-reverse-engineering.md`) — all connection details, expressions, and APIs are here.
+2. **Execution model**: Your app must run **outside** the Morpho page (Node, Electron main, Python, etc.), open a WebSocket to the Morpho target’s `webSocketDebuggerUrl`, and send CDP `Runtime.evaluate` messages with `returnByValue: true`.
+
+**Minimal flow for an agent to implement:**
+
+| Step | Action | Reference in this doc |
+|------|--------|------------------------|
+| 1 | Launch Amazon Music with `--remote-debugging-port=9222` (or ensure it is already running). | §1 |
+| 2 | `GET http://localhost:9222/json`, find the target whose `url` contains `amazon.com/morpho`. | §2 |
+| 3 | Connect a WebSocket to that target’s `webSocketDebuggerUrl`. | §2 |
+| 4 | Send one CDP request: `method: "Runtime.evaluate"`, `params: { expression: "<inject script>", returnByValue: true }`. Use the **Step 1** script from §5 (webpack require resolver). | §5, first code block |
+| 5 | Send further CDP requests with `expression` set to JS that calls `window.__amazon_require__("0903").a.<methodName>()` — e.g. `playNext()`, `setPaused(true)`. Use the **Step 2** pattern and the Player API table in §5. | §5, second code block + table |
+| 6 | To read state, send CDP with `expression` set to the full state extraction IIFE from §4 (or the individual paths). Parse the returned string as JSON. | §4 |
+
+**Important:** Response handling is JSON by message `id`; the evaluated result is in `result.result.value` (see §2). Handle CDP errors (e.g. `result.error`) and timeouts. The CEF JS engine does not support `?.` or `??`; use `&&` in any injected expressions (§16).
+
+---
+
+## 18. Project File Map
 
 | Path | Purpose |
 |---|---|

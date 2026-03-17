@@ -10,7 +10,9 @@
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "dev:next": "ts-node ./tests/dev-next.ts",
-    "dev:direct-next": "ts-node ./tests/dev-direct-next.ts"
+    "dev:direct-next": "ts-node ./tests/dev-direct-next.ts",
+    "dev:discover-playlist": "ts-node ./tests/dev-discover-playlist.ts",
+    "dev:append-to-playlist": "ts-node ./tests/dev-append-to-playlist.ts"
   },
   "repository": {
     "type": "git",
