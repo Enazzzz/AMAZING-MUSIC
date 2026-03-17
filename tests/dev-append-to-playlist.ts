@@ -14,10 +14,10 @@ import WebSocket from "ws";
 const DEBUG_PORT = 9222;
 
 /** If set, use this playlist id when it appears in user playlists. */
-const TEST_PLAYLIST_ID: string | undefined = "0c231a7bf0c94e0cbc16eb4d0ffec48d";
+const TEST_PLAYLIST_ID: string | undefined = "3323ccd4-8cc3-4495-a215-1afb2a142224";
 
 /** If set, add this track by ASIN using the app's item normalizer (3e08 "g") — no need for the track to be playing. */
-const TEST_TRACK_ASIN: string | undefined = "B073SCYJ1Y";
+const TEST_TRACK_ASIN: string | undefined = "B00EQNYXSM";
 
 type CdpTarget = { url?: string; webSocketDebuggerUrl?: string };
 
@@ -128,8 +128,13 @@ async function main(): Promise<void> {
 							var user = pl && pl.playlists && pl.playlists.user;
 							if (!user || !user.length) return JSON.stringify({ error: "no-user-playlists" });
 							var testId = ${TEST_PLAYLIST_ID ? JSON.stringify(TEST_PLAYLIST_ID) : "null"};
-							var chosen = testId ? user.filter(function(p) { return p.id === testId; })[0] : null;
-							if (!chosen) chosen = user[0];
+							var chosen = null;
+							if (testId) {
+								chosen = user.filter(function(p) { return p.id === testId; })[0];
+								if (!chosen) return JSON.stringify({ error: "test-playlist-not-found" });
+							} else {
+								chosen = user[0];
+							}
 							var playlistId = chosen.id;
 							var playlistTitle = chosen.title || chosen.name || "";
 							var noop = function() {};
@@ -188,8 +193,13 @@ async function main(): Promise<void> {
 							var user = pl && pl.playlists && pl.playlists.user;
 							if (!user || !user.length) return JSON.stringify({ error: "no-user-playlists" });
 							var testId = ${TEST_PLAYLIST_ID ? JSON.stringify(TEST_PLAYLIST_ID) : "null"};
-							var chosen = testId ? user.filter(function(p) { return p.id === testId; })[0] : null;
-							if (!chosen) chosen = user[0];
+							var chosen = null;
+							if (testId) {
+								chosen = user.filter(function(p) { return p.id === testId; })[0];
+								if (!chosen) return JSON.stringify({ error: "test-playlist-not-found" });
+							} else {
+								chosen = user[0];
+							}
 							var playlistId = chosen.id;
 							var playlistTitle = chosen.title || chosen.name || "";
 							var noop = function() {};
