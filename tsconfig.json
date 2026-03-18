@@ -1,18 +1,21 @@
 {
 	"compilerOptions": {
 		"target": "ES2022",
-		"module": "CommonJS",
-		"moduleResolution": "Node",
-		"outDir": "dist",
-		"rootDir": "src",
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"jsx": "react-jsx",
 		"strict": true,
 		"esModuleInterop": true,
 		"forceConsistentCasingInFileNames": true,
 		"skipLibCheck": true,
 		"resolveJsonModule": true,
-		"lib": ["ES2022", "DOM"],
-		"types": ["node", "electron"]
+		"types": ["node", "electron"],
+		"baseUrl": ".",
+		"paths": {
+			"@renderer/*": ["src/renderer/*"],
+			"@shared/*": ["src/shared/*"]
+		}
 	},
-	"include": ["src/**/*.ts"],
+	"include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts", "postcss.config.cjs", "tailwind.config.cjs"],
 	"exclude": ["node_modules", "dist"]
 }

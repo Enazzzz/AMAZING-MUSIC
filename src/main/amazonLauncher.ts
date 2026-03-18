@@ -1,95 +1,116 @@
-import { spawn, type ChildProcess } from "node:child_process";
-import { CdpClient } from "./cdp/cdpClient";
-import {
-	buildDispatchExpression,
-	buildNavigateExpression,
-	buildSearchDispatchExpression,
-	buildSearchReadExpression,
-	buildStateExpression,
-	mapCommandToDispatch,
-	parseSearchResults,
-} from "./cdp/amazonBridge";
-import type { AmazonCommand, PlayerStateDto, SearchResultsDto } from "../shared/types";
+import { fork, type ChildProcess } from "node:child_process";
+import { join } from "node:path";
+import type { App } from "electron";
+import type { AmazonCommand, MorphoConfig, PlayerStateDto, SearchResultsDto } from "../shared/types";
 import { EMPTY_PLAYER_STATE } from "../shared/types";
-import type { LauncherConfig } from "./launcherConfig";
-import { hideAmazonMusicWindow } from "./windows/win32WindowHider";
+
+interface WorkerRequest {
+	type: "request";
+	id: number;
+	action: "start" | "stop" | "sendCommand" | "navigate" | "search" | "setConfig";
+	payload?: unknown;
+}
+
+interface WorkerResponse {
+	type: "response";
+	id: number;
+	ok: boolean;
+	result?: unknown;
+	error?: string;
+}
+
+interface WorkerStateEvent {
+	type: "state";
+	state: PlayerStateDto;
+}
+
+interface WorkerLogEvent {
+	type: "log";
+	level: "info" | "warn" | "error";
+	message: string;
+}
+
+type WorkerMessage = WorkerResponse | WorkerStateEvent | WorkerLogEvent;
 
 /**
- * Handles process lifecycle and CDP bridge operations for Amazon Music.
+ * Hosts the isolated launcher worker process and proxies commands/states.
  */
 export class AmazonLauncherService {
-	private readonly config: LauncherConfig;
-	private amazonProcess: ChildProcess | null = null;
-	private readonly cdpClient: CdpClient;
-	private latestState: PlayerStateDto = EMPTY_PLAYER_STATE;
-	private pollInterval: NodeJS.Timeout | null = null;
-	private hideEnforcerInterval: NodeJS.Timeout | null = null;
+	private readonly app: App;
+	private config: MorphoConfig;
+	private workerProcess: ChildProcess | null = null;
 	private readonly listeners = new Set<(state: PlayerStateDto) => void>();
+	private latestState: PlayerStateDto = EMPTY_PLAYER_STATE;
+	private requestId = 1;
+	private readonly pending = new Map<
+		number,
+		{
+			resolve: (value: unknown) => void;
+			reject: (error: Error) => void;
+			timeout: NodeJS.Timeout;
+		}
+	>();
 
 	/**
-	 * Creates a launcher service with a static runtime config.
+	 * Constructs launcher host with current app config.
 	 */
-	public constructor(config: LauncherConfig) {
+	public constructor(app: App, config: MorphoConfig) {
+		this.app = app;
 		this.config = config;
-		this.cdpClient = new CdpClient(config.debugPort);
 	}
 
 	/**
-	 * Starts Amazon Music, connects CDP, and begins state polling.
+	 * Updates config and forwards it to worker if active.
+	 */
+	public setConfig(config: MorphoConfig): void {
+		this.config = config;
+		if (!this.workerProcess) {
+			return;
+		}
+		void this.request("setConfig", {
+			config: this.config,
+			userDataPath: this.app.getPath("userData"),
+		});
+	}
+
+	/**
+	 * Starts worker process and launches Amazon/CDP lifecycle there.
 	 */
 	public async start(): Promise<{ hiddenWindow: boolean }> {
-		this.amazonProcess = spawn(
-			this.config.amazonExePath,
-			[`--remote-debugging-port=${this.config.debugPort}`],
-			{
-				// Prevent child stdout/stderr pipes from filling and stalling startup.
-				stdio: "ignore",
-				detached: false,
-				windowsHide: false,
-			}
-		);
-		await this.cdpClient.connect(this.config.startupRetryCount, 500);
-		let hiddenWindow = false;
-		if (this.config.hideAmazonWindow) {
-			hiddenWindow = await hideAmazonMusicWindow({
-				targetProcessId: this.amazonProcess.pid ?? undefined,
-				maxAttempts: 80,
-				delayMs: 500,
-			});
-			this.startHideEnforcer(this.amazonProcess.pid ?? undefined);
-		}
-		this.startPolling();
-		return { hiddenWindow };
+		await this.ensureWorker();
+		return (await this.request("start")) as { hiddenWindow: boolean };
 	}
 
 	/**
-	 * Stops polling, closes CDP, and terminates the spawned process.
+	 * Stops worker process and clears pending requests.
 	 */
 	public async stop(): Promise<void> {
-		if (this.pollInterval) {
-			clearInterval(this.pollInterval);
-			this.pollInterval = null;
+		if (!this.workerProcess) {
+			return;
 		}
-		if (this.hideEnforcerInterval) {
-			clearInterval(this.hideEnforcerInterval);
-			this.hideEnforcerInterval = null;
+		try {
+			await this.request("stop");
+		} catch (_error) {
+			// Worker may already be shutting down.
 		}
-		await this.cdpClient.close();
-		if (this.amazonProcess && !this.amazonProcess.killed) {
-			this.amazonProcess.kill();
+		this.workerProcess.kill();
+		this.workerProcess = null;
+		for (const [id, pending] of this.pending.entries()) {
+			clearTimeout(pending.timeout);
+			pending.reject(new Error(`Worker request ${id} aborted during shutdown.`));
+			this.pending.delete(id);
 		}
-		this.amazonProcess = null;
 	}
 
 	/**
-	 * Returns the current cached state for immediate renderer hydration.
+	 * Returns current cached state for renderer hydration.
 	 */
 	public getCachedState(): PlayerStateDto {
 		return this.latestState;
 	}
 
 	/**
-	 * Subscribes to state updates emitted from the polling loop.
+	 * Subscribes to worker state events forwarded through host.
 	 */
 	public subscribe(listener: (state: PlayerStateDto) => void): () => void {
 		this.listeners.add(listener);
@@ -99,261 +120,99 @@ export class AmazonLauncherService {
 	}
 
 	/**
-	 * Dispatches a typed command to Amazon's Vuex store.
+	 * Proxies typed command execution to the launcher worker.
 	 */
 	public async sendCommand(command: AmazonCommand): Promise<unknown> {
-		const mapped = mapCommandToDispatch(command);
-		const expression = buildDispatchExpression(mapped.action, mapped.payload);
-		return this.cdpClient.evaluate(expression);
+		return this.request("sendCommand", command);
 	}
 
 	/**
-	 * Pushes a route path into Amazon's internal Vue router.
+	 * Proxies hidden-route navigation to the worker.
 	 */
 	public async navigate(path: string): Promise<unknown> {
-		const expression = buildNavigateExpression(path);
-		return this.cdpClient.evaluate(expression);
+		return this.request("navigate", path);
 	}
 
 	/**
-	 * Executes a search action and reads normalized search results.
+	 * Proxies search mutation call to worker.
 	 */
 	public async search(query: string): Promise<SearchResultsDto> {
-		const dispatchExpression = buildSearchDispatchExpression(query);
-		await this.cdpClient.evaluate(dispatchExpression);
-		const readExpression = buildSearchReadExpression(query);
-		const raw = await this.cdpClient.evaluate(readExpression);
-		return parseSearchResults(raw, query);
+		return (await this.request("search", query)) as SearchResultsDto;
 	}
 
 	/**
-	 * Enumerates registered Vuex actions from the live store.
+	 * Starts child process and configures message routing.
 	 */
-	public async listActions(): Promise<string[]> {
-		const raw = await this.cdpClient.evaluate("JSON.stringify(Object.keys(window.App.$store._actions))");
-		if (typeof raw !== "string") {
-			return [];
+	private async ensureWorker(): Promise<void> {
+		if (this.workerProcess && this.workerProcess.connected) {
+			return;
 		}
-		try {
-			return JSON.parse(raw) as string[];
-		} catch (_error) {
-			return [];
+		const workerPath = join(__dirname, "../launcher/worker.js");
+		this.workerProcess = fork(workerPath, [], {
+			stdio: ["pipe", "inherit", "inherit", "ipc"],
+		});
+		this.workerProcess.on("message", (message) => this.handleWorkerMessage(message as WorkerMessage));
+		this.workerProcess.on("exit", (code, signal) => {
+			console.log(`[launcher-host] worker exited code=${String(code)} signal=${String(signal)}`);
+			this.workerProcess = null;
+		});
+		await this.request("setConfig", {
+			config: this.config,
+			userDataPath: this.app.getPath("userData"),
+		});
+	}
+
+	/**
+	 * Routes worker events and resolves pending request promises.
+	 */
+	private handleWorkerMessage(message: WorkerMessage): void {
+		if (message.type === "state") {
+			this.latestState = message.state;
+			for (const listener of this.listeners) {
+				listener(message.state);
+			}
+			return;
 		}
+		if (message.type === "log") {
+			console.log(`[launcher-worker:${message.level}] ${message.message}`);
+			return;
+		}
+		const pending = this.pending.get(message.id);
+		if (!pending) {
+			return;
+		}
+		clearTimeout(pending.timeout);
+		this.pending.delete(message.id);
+		if (!message.ok) {
+			pending.reject(new Error(message.error ?? "Worker request failed."));
+			return;
+		}
+		pending.resolve(message.result);
 	}
 
 	/**
-	 * Ensures a direct-call helper exists in the Morpho page by resolving webpack require
-	 * and binding to the internal Player module (`0903` from exported app.js).
+	 * Sends one request to worker and resolves with response payload.
 	 */
-	private async ensureInternalPlayerHelper(): Promise<unknown> {
-		const expression = `
-			(function () {
-				if (
-					window.AmazonInternalPlayer &&
-					typeof window.AmazonInternalPlayer.playNext === "function" &&
-					typeof window.AmazonInternalPlayer.playPrevious === "function"
-				) {
-					return "helper:existing";
-				}
-
-				function resolveRequire() {
-					if (typeof window.__amazon_require__ === "function") {
-						return window.__amazon_require__;
-					}
-					if (!window.webpackJsonp || !window.webpackJsonp.push) {
-						return null;
-					}
-					try {
-						window.webpackJsonp.push([
-							["__am_req_chunk__"],
-							{
-								"__am_req_module__": function (module, exports, req) {
-									window.__amazon_require__ = req;
-								}
-							},
-							[["__am_req_module__"]]
-						]);
-					} catch (e) {
-						return null;
-					}
-					return typeof window.__amazon_require__ === "function" ? window.__amazon_require__ : null;
-				}
-
-				var req = resolveRequire();
-				if (!req) {
-					return "helper:no-require";
-				}
-
-				var playerModule = req("0903");
-				var player = playerModule && (playerModule.a || playerModule.default || playerModule);
-				if (!player || typeof player.playNext !== "function") {
-					return "helper:no-player-module";
-				}
-
-				window.AmazonInternalPlayer = {
-					playNext: function () {
-						return player.playNext();
-					},
-					playPrevious: function () {
-						return player.playPrevious();
-					},
-					playPause: function () {
-						var modelState = player && player.model && player.model.state;
-						return player.setPaused(modelState !== "PAUSED");
-					},
-					toggleShuffle: function () {
-						var cur = !!(player && player.settings && player.settings.shuffle);
-						return player.setShuffle(!cur);
-					},
-					toggleRepeat: function () {
-						return player.toggleRepeat();
-					}
-				};
-
-				return "helper:created";
-			})()
-		`.trim();
-
-		return this.cdpClient.evaluate(expression);
-	}
-
-	/**
-	 * Sends direct internal controls using Amazon's Player module helper.
-	 * Falls back to data-qaid button clicks if helper resolution fails.
-	 */
-	public async clickControl(control: "next" | "previous" | "playPause" | "shuffle" | "repeat"): Promise<unknown> {
-		const helperResult = await this.ensureInternalPlayerHelper();
-
-		const directExpression = `
-			(function () {
-				var type = "${control}";
-				if (!window.AmazonInternalPlayer) {
-					return "direct:no-helper";
-				}
-				if (type === "next") {
-					window.AmazonInternalPlayer.playNext();
-					return "direct:next";
-				}
-				if (type === "previous") {
-					window.AmazonInternalPlayer.playPrevious();
-					return "direct:previous";
-				}
-				if (type === "playPause") {
-					window.AmazonInternalPlayer.playPause();
-					return "direct:playPause";
-				}
-				if (type === "shuffle") {
-					window.AmazonInternalPlayer.toggleShuffle();
-					return "direct:shuffle";
-				}
-				if (type === "repeat") {
-					window.AmazonInternalPlayer.toggleRepeat();
-					return "direct:repeat";
-				}
-				return "direct:unknown-type";
-			})()
-		`.trim();
-
-		try {
-			return await this.cdpClient.evaluate(directExpression);
-		} catch (_error) {
-			const fallbackExpression = `
-				(function () {
-					var type = "${control}";
-					var selectors = {
-						next: 'button[data-qaid="next"]',
-						previous: 'button[data-qaid="previous"]',
-						playPause: 'button[data-qaid="playPause"]',
-						shuffle: 'button[data-qaid="shuffle"]',
-						repeat: 'button[data-qaid="repeat"]'
-					};
-					var sel = selectors[type];
-					if (!sel) return "fallback:unknown-type";
-					var btn = document.querySelector(sel);
-					if (!btn) return "fallback:no-button:" + type;
-					btn.click();
-					return "fallback:clicked:" + type;
-				})()
-			`.trim();
-
-			const fallbackResult = await this.cdpClient.evaluate(fallbackExpression);
-			return {
-				helperResult,
-				directFailed: true,
-				fallbackResult,
+	private async request(action: WorkerRequest["action"], payload?: unknown): Promise<unknown> {
+		if (!this.workerProcess || !this.workerProcess.connected) {
+			throw new Error(`Worker unavailable for action: ${action}`);
+		}
+		const id = this.requestId;
+		this.requestId += 1;
+		const timeoutMs = action === "start" ? 120000 : action === "stop" ? 30000 : 20000;
+		return new Promise<unknown>((resolve, reject) => {
+			const timeout = setTimeout(() => {
+				this.pending.delete(id);
+				reject(new Error(`Worker request timed out: ${action}`));
+			}, timeoutMs);
+			this.pending.set(id, { resolve, reject, timeout });
+			const message: WorkerRequest = {
+				type: "request",
+				id,
+				action,
+				payload,
 			};
-		}
-	}
-
-	/**
-	 * Enumerates registered Vuex mutations from the live store.
-	 */
-	public async listMutations(): Promise<string[]> {
-		const raw = await this.cdpClient.evaluate("JSON.stringify(Object.keys(window.App.$store._mutations))");
-		if (typeof raw !== "string") {
-			return [];
-		}
-		try {
-			return JSON.parse(raw) as string[];
-		} catch (_error) {
-			return [];
-		}
-	}
-
-	/**
-	 * Starts a fixed-interval polling loop for playback state snapshots.
-	 */
-	private startPolling(): void {
-		if (this.pollInterval) {
-			clearInterval(this.pollInterval);
-		}
-		this.pollInterval = setInterval(() => {
-			void this.refreshState();
-		}, this.config.statePollMs);
-		void this.refreshState();
-	}
-
-	/**
-	 * Re-applies hide shortly after startup in case Amazon re-shows its window.
-	 */
-	private startHideEnforcer(targetProcessId: number | undefined): void {
-		if (this.hideEnforcerInterval) {
-			clearInterval(this.hideEnforcerInterval);
-		}
-		let attemptsRemaining = 45;
-		this.hideEnforcerInterval = setInterval(() => {
-			attemptsRemaining -= 1;
-			void hideAmazonMusicWindow({
-				targetProcessId,
-				maxAttempts: 1,
-				delayMs: 0,
-			});
-			if (attemptsRemaining <= 0 && this.hideEnforcerInterval) {
-				clearInterval(this.hideEnforcerInterval);
-				this.hideEnforcerInterval = null;
-			}
-		}, 1000);
-	}
-
-	/**
-	 * Fetches and parses the latest player state from CDP.
-	 */
-	private async refreshState(): Promise<void> {
-		try {
-			const raw = await this.cdpClient.evaluate(buildStateExpression());
-			if (typeof raw !== "string") {
-				return;
-			}
-			const nextState = JSON.parse(raw) as PlayerStateDto;
-			const changed = JSON.stringify(nextState) !== JSON.stringify(this.latestState);
-			this.latestState = nextState;
-			if (changed) {
-				for (const listener of this.listeners) {
-					listener(nextState);
-				}
-			}
-		} catch (_error) {
-			// Intentionally swallow transient polling errors to keep the loop alive.
-		}
+			this.workerProcess?.send(message);
+		});
 	}
 }

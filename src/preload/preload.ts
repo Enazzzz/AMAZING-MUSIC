@@ -1,66 +1,68 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { AmazonCommand, PlayerStateDto, SearchResultsDto } from "../shared/types";
+import type { AmazonCommand, MorphoConfig, MorphoDiagnosticsEvent, PlayerStateDto, SearchResultsDto } from "../shared/types";
 
 /**
- * Typed API exposed to the isolated renderer context.
+ * Defines the typed renderer API exposed through contextBridge.
  */
-interface AmazonBridgeApi {
-	getState(): Promise<PlayerStateDto>;
-	sendCommand(command: AmazonCommand): Promise<unknown>;
-	navigate(path: string): Promise<unknown>;
-	search(query: string): Promise<SearchResultsDto>;
-	listActions(): Promise<string[]>;
-	listMutations(): Promise<string[]>;
-	clickControl(control: "next" | "previous" | "playPause" | "shuffle" | "repeat"): Promise<unknown>;
-	onStateUpdate(listener: (state: PlayerStateDto) => void): () => void;
-	onDiagnostic(listener: (message: string) => void): () => void;
+interface MorphoBridgeApi {
+	getState: () => Promise<PlayerStateDto>;
+	sendCommand: (command: AmazonCommand) => Promise<unknown>;
+	navigate: (path: string) => Promise<unknown>;
+	search: (query: string) => Promise<SearchResultsDto>;
+	getConfig: () => Promise<MorphoConfig>;
+	setConfig: (patch: Partial<MorphoConfig>) => Promise<MorphoConfig>;
+	validateAmazonPath: (path: string) => Promise<{ ok: boolean; message?: string }>;
+	getUserDataPath: () => Promise<string>;
+	onStateUpdate: (listener: (state: PlayerStateDto) => void) => () => void;
+	onDiagnostic: (listener: (event: MorphoDiagnosticsEvent) => void) => () => void;
 }
 
 /**
- * Concrete preload bridge implementation that wraps IPC channels.
+ * Implements all preload-safe methods delegated to ipcRenderer.
  */
-const api: AmazonBridgeApi = {
-	getState() {
-		return ipcRenderer.invoke("amazon:getState");
-	},
-	sendCommand(command) {
-		return ipcRenderer.invoke("amazon:command", command);
-	},
-	navigate(path) {
-		return ipcRenderer.invoke("amazon:navigate", path);
-	},
-	search(query) {
-		return ipcRenderer.invoke("amazon:search", query);
-	},
-	listActions() {
-		return ipcRenderer.invoke("amazon:listActions");
-	},
-	listMutations() {
-		return ipcRenderer.invoke("amazon:listMutations");
-	},
-	clickControl(control) {
-		return ipcRenderer.invoke("amazon:clickControl", control);
-	},
-	onStateUpdate(listener) {
+const api: MorphoBridgeApi = {
+	getState: () => ipcRenderer.invoke("morpho:getState"),
+	sendCommand: (command) => ipcRenderer.invoke("morpho:sendCommand", command),
+	navigate: (path) => ipcRenderer.invoke("morpho:navigate", path),
+	search: (query) => ipcRenderer.invoke("morpho:search", query),
+	getConfig: () => ipcRenderer.invoke("morpho:getConfig"),
+	setConfig: (patch) => ipcRenderer.invoke("morpho:setConfig", patch),
+	validateAmazonPath: (path) => ipcRenderer.invoke("morpho:validateAmazonPath", path),
+	getUserDataPath: () => ipcRenderer.invoke("morpho:getUserDataPath"),
+	onStateUpdate: (listener) => {
 		const handler = (_event: Electron.IpcRendererEvent, state: PlayerStateDto) => listener(state);
-		ipcRenderer.on("amazon:stateUpdate", handler);
+		ipcRenderer.on("morpho:stateUpdate", handler);
 		return () => {
-			ipcRenderer.removeListener("amazon:stateUpdate", handler);
+			ipcRenderer.removeListener("morpho:stateUpdate", handler);
 		};
 	},
-	onDiagnostic(listener) {
-		const handler = (_event: Electron.IpcRendererEvent, message: string) => listener(message);
-		ipcRenderer.on("amazon:diagnostic", handler);
+	onDiagnostic: (listener) => {
+		const handler = (_event: Electron.IpcRendererEvent, event: MorphoDiagnosticsEvent) => {
+			// Mirror diagnostics into renderer DevTools console for easier debugging.
+			const prefix = `[Morpho ${event.type.toUpperCase()}]`;
+			if (event.type === "error") {
+				// eslint-disable-next-line no-console
+				console.error(prefix, event.message);
+			} else if (event.type === "warn") {
+				// eslint-disable-next-line no-console
+				console.warn(prefix, event.message);
+			} else {
+				// eslint-disable-next-line no-console
+				console.log(prefix, event.message);
+			}
+			listener(event);
+		};
+		ipcRenderer.on("morpho:diagnostic", handler);
 		return () => {
-			ipcRenderer.removeListener("amazon:diagnostic", handler);
+			ipcRenderer.removeListener("morpho:diagnostic", handler);
 		};
 	},
 };
 
-contextBridge.exposeInMainWorld("amazonBridge", api);
+contextBridge.exposeInMainWorld("morpho", api);
 
 declare global {
 	interface Window {
-		amazonBridge: AmazonBridgeApi;
+		morpho: MorphoBridgeApi;
 	}
 }

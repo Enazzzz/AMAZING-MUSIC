@@ -1,7 +1,7 @@
 import WebSocket from "ws";
 
 /**
- * CDP target entry from GET /json.
+ * Defines a CDP target descriptor entry returned by /json.
  */
 interface CdpTarget {
 	url?: string;
@@ -9,9 +9,9 @@ interface CdpTarget {
 }
 
 /**
- * Message envelope for Runtime.evaluate requests.
+ * Defines the evaluate command payload sent over CDP.
  */
-interface CdpEvaluateMessage {
+interface EvaluateRequest {
 	id: number;
 	method: "Runtime.evaluate";
 	params: {
@@ -20,6 +20,9 @@ interface CdpEvaluateMessage {
 	};
 }
 
+/**
+ * Defines the queued promise handlers for in-flight evaluate calls.
+ */
 interface PendingRequest {
 	resolve: (value: unknown) => void;
 	reject: (error: Error) => void;
@@ -27,9 +30,9 @@ interface PendingRequest {
 }
 
 /**
- * Creates a Runtime.evaluate request with returnByValue enabled.
+ * Builds a Runtime.evaluate request object for CDP.
  */
-export function createCdpMessage(id: number, expression: string): CdpEvaluateMessage {
+function buildEvaluateRequest(id: number, expression: string): EvaluateRequest {
 	return {
 		id,
 		method: "Runtime.evaluate",
@@ -41,140 +44,103 @@ export function createCdpMessage(id: number, expression: string): CdpEvaluateMes
 }
 
 /**
- * Reads the nested value field from a CDP Runtime.evaluate response.
+ * Resolves the Morpho debugging target websocket URL from /json.
  */
-export function parseEvaluateValue(response: unknown): unknown {
-	const maybeResponse = response as {
-		result?: {
-			result?: {
-				value?: unknown;
-			};
-		};
-	};
-	if (!maybeResponse?.result?.result || !("value" in maybeResponse.result.result)) {
-		return null;
-	}
-	return maybeResponse.result.result.value ?? null;
-}
-
-/**
- * Extracts a protocol-level error message from a CDP response.
- */
-export function extractCdpError(response: unknown): string | null {
-	const maybeResponse = response as {
-		error?: {
-			message?: string;
-		};
-	};
-	const message = maybeResponse?.error?.message;
-	return typeof message === "string" && message.length > 0 ? message : null;
-}
-
-/**
- * Resolves the devtools websocket URL for the Morpho target.
- */
-async function resolveMorphoWsUrl(port: number): Promise<string> {
-	const response = await fetch(`http://localhost:${port}/json`);
+async function resolveMorphoSocketUrl(debugPort: number): Promise<string> {
+	const response = await fetch(`http://localhost:${debugPort}/json`);
 	if (!response.ok) {
-		throw new Error(`CDP target discovery failed with status ${response.status}`);
+		throw new Error(`CDP discovery failed with status ${response.status}.`);
 	}
 	const targets = (await response.json()) as CdpTarget[];
-	for (const target of targets) {
-		if (target.url?.includes("amazon.com/morpho") && target.webSocketDebuggerUrl) {
-			return target.webSocketDebuggerUrl;
-		}
+	const target = targets.find((entry) => entry.url?.includes("amazon.com/morpho") && entry.webSocketDebuggerUrl);
+	if (!target?.webSocketDebuggerUrl) {
+		throw new Error("Morpho target was not found in CDP discovery output.");
 	}
-	throw new Error("Could not find Amazon Morpho target in CDP /json list.");
+	return target.webSocketDebuggerUrl;
 }
 
 /**
- * Waits for the Morpho target to become available, retrying with delays.
+ * Waits for a Morpho websocket endpoint to appear with retries.
  */
-async function waitForMorphoWsUrl(port: number, retries: number, delayMs: number): Promise<string> {
+async function waitForMorphoSocketUrl(debugPort: number, retryCount: number, retryDelayMs: number): Promise<string> {
 	let lastError: unknown = null;
-	for (let attempt = 0; attempt < retries; attempt += 1) {
+	for (let attempt = 1; attempt <= retryCount; attempt += 1) {
 		try {
-			return await resolveMorphoWsUrl(port);
+			return await resolveMorphoSocketUrl(debugPort);
 		} catch (error) {
 			lastError = error;
-			await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+			await new Promise<void>((resolve) => setTimeout(resolve, retryDelayMs));
 		}
 	}
-	throw new Error(`Unable to resolve Morpho websocket URL after ${retries} attempts: ${String(lastError)}`);
+	throw new Error(`Unable to discover Morpho target after ${retryCount} retries: ${String(lastError)}`);
 }
 
 /**
- * Minimal CDP client that only needs Runtime.evaluate.
+ * Implements a minimal CDP Runtime.evaluate websocket client.
  */
 export class CdpClient {
-	private ws: WebSocket | null = null;
-	private nextId = 1;
+	private socket: WebSocket | null = null;
 	private readonly pending = new Map<number, PendingRequest>();
+	private readonly onDisconnectListeners = new Set<() => void>();
+	private nextMessageId = 1;
 	private readonly debugPort: number;
 
 	/**
-	 * Creates a new client pinned to a remote debugging port.
+	 * Constructs a CDP client bound to a single debugging port.
 	 */
 	public constructor(debugPort: number) {
 		this.debugPort = debugPort;
 	}
 
 	/**
-	 * Opens a websocket to the Morpho target and starts response routing.
+	 * Connects to the Morpho target and installs event routing handlers.
 	 */
-	public async connect(retries = 40, delayMs = 500): Promise<void> {
-		const wsUrl = await waitForMorphoWsUrl(this.debugPort, retries, delayMs);
+	public async connect(retryCount = 60, retryDelayMs = 500): Promise<void> {
+		const socketUrl = await waitForMorphoSocketUrl(this.debugPort, retryCount, retryDelayMs);
 		await new Promise<void>((resolve, reject) => {
-			this.ws = new WebSocket(wsUrl);
-			this.ws.on("open", () => resolve());
-			this.ws.on("error", (error) => reject(error));
-			this.ws.on("message", (message) => this.handleIncomingMessage(message.toString()));
-			this.ws.on("close", () => {
-				this.rejectAllPending(new Error("CDP websocket closed."));
-				this.ws = null;
+			const ws = new WebSocket(socketUrl);
+			this.socket = ws;
+			ws.once("open", () => resolve());
+			ws.once("error", (error) => reject(error));
+			ws.on("message", (data) => this.handleIncomingFrame(data.toString()));
+			ws.on("close", () => {
+				this.rejectPending(new Error("CDP websocket closed."));
+				this.socket = null;
+				for (const listener of this.onDisconnectListeners) {
+					listener();
+				}
 			});
 		});
 	}
 
 	/**
-	 * Closes the websocket cleanly.
+	 * Registers a callback that runs whenever the websocket disconnects.
 	 */
-	public async close(): Promise<void> {
-		if (!this.ws) {
-			this.rejectAllPending(new Error("CDP client closed."));
-			return;
-		}
-		await new Promise<void>((resolve) => {
-			const socket = this.ws;
-			if (!socket) {
-				resolve();
-				return;
-			}
-			socket.once("close", () => resolve());
-			socket.close();
-		});
-		this.ws = null;
+	public onDisconnect(listener: () => void): () => void {
+		this.onDisconnectListeners.add(listener);
+		return () => {
+			this.onDisconnectListeners.delete(listener);
+		};
 	}
 
 	/**
-	 * Sends a Runtime.evaluate command and resolves its returnByValue result.
+	 * Evaluates a JavaScript expression inside the Morpho runtime.
 	 */
-	public async evaluate(expression: string): Promise<unknown> {
-		if (!this.ws) {
+	public async evaluate(expression: string, timeoutMs = 8000): Promise<unknown> {
+		if (!this.socket) {
 			throw new Error("CDP client is not connected.");
 		}
-		const id = this.nextId;
-		this.nextId += 1;
-		const message = createCdpMessage(id, expression);
-		const payload = JSON.stringify(message);
+		const id = this.nextMessageId;
+		this.nextMessageId += 1;
+		const request = buildEvaluateRequest(id, expression);
 		const responsePromise = new Promise<unknown>((resolve, reject) => {
 			const timeout = setTimeout(() => {
 				this.pending.delete(id);
-				reject(new Error(`CDP evaluate timed out for request ${id}.`));
-			}, 7000);
+				reject(new Error(`CDP request ${id} timed out after ${timeoutMs}ms.`));
+			}, timeoutMs);
 			this.pending.set(id, { resolve, reject, timeout });
 		});
-		this.ws.send(payload, (error) => {
+		this.socket.send(JSON.stringify(request), (error) => {
 			if (!error) {
 				return;
 			}
@@ -190,40 +156,71 @@ export class CdpClient {
 	}
 
 	/**
-	 * Handles CDP inbound frames and resolves waiting evaluate calls.
+	 * Tries to reconnect once if the socket is not currently available.
 	 */
-	private handleIncomingMessage(raw: string): void {
-		let message: unknown;
+	public async ensureConnected(): Promise<void> {
+		if (this.socket) {
+			return;
+		}
+		await this.connect();
+	}
+
+	/**
+	 * Closes the websocket and rejects all pending requests.
+	 */
+	public async close(): Promise<void> {
+		if (!this.socket) {
+			this.rejectPending(new Error("CDP client closed."));
+			return;
+		}
+		await new Promise<void>((resolve) => {
+			const ws = this.socket;
+			if (!ws) {
+				resolve();
+				return;
+			}
+			ws.once("close", () => resolve());
+			ws.close();
+		});
+		this.socket = null;
+	}
+
+	/**
+	 * Routes inbound websocket messages back to the correct pending request.
+	 */
+	private handleIncomingFrame(rawFrame: string): void {
+		let frame: unknown;
 		try {
-			message = JSON.parse(raw);
+			frame = JSON.parse(rawFrame);
 		} catch (_error) {
 			return;
 		}
-		const maybeId = (message as { id?: number }).id;
-		if (typeof maybeId !== "number") {
+		const messageId = (frame as { id?: number }).id;
+		if (typeof messageId !== "number") {
 			return;
 		}
-		const pending = this.pending.get(maybeId);
+		const pending = this.pending.get(messageId);
 		if (!pending) {
 			return;
 		}
 		clearTimeout(pending.timeout);
-		this.pending.delete(maybeId);
-		const protocolError = extractCdpError(message);
+		this.pending.delete(messageId);
+		const protocolError = (frame as { error?: { message?: string } }).error?.message;
 		if (protocolError) {
 			pending.reject(new Error(`CDP protocol error: ${protocolError}`));
 			return;
 		}
-		pending.resolve(parseEvaluateValue(message));
+		const value = (frame as { result?: { result?: { value?: unknown } } }).result?.result?.value ?? null;
+		pending.resolve(value);
 	}
 
 	/**
-	 * Rejects all unresolved requests, usually after socket close/failure.
+	 * Rejects all pending evaluate promises after transport failure.
 	 */
-	private rejectAllPending(error: Error): void {
+	private rejectPending(error: Error): void {
 		for (const [id, pending] of this.pending.entries()) {
 			clearTimeout(pending.timeout);
-			pending.reject(new Error(`${error.message} Pending request ${id} aborted.`));
+			pending.reject(new Error(`${error.message} requestId=${id}`));
 			this.pending.delete(id);
 		}
 	}

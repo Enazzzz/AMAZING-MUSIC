@@ -1,55 +1,72 @@
+import { app } from "electron";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import type { LauncherConfig } from "./launcherConfig";
+import type { MorphoConfig } from "../shared/types";
 
 /**
- * Shape stored in user-level launcher config JSON.
+ * Provides default app-level persistent configuration values.
  */
-interface PersistedLauncherConfig {
-	amazonExePath?: string;
+function getDefaultConfig(): MorphoConfig {
+	return {
+		amazonExePath: join(homedir(), "AppData", "Local", "Amazon Music", "Amazon Music.exe"),
+		debugPort: 9222,
+		pollMs: 250,
+		hideAmazonWindow: true,
+		autostartWithWindows: false,
+		audioQuality: "ULTRA_HD",
+		groupListening: {
+			enabled: false,
+			host: "0.0.0.0",
+			port: 43843,
+		},
+	};
 }
 
 /**
- * Returns the full config file path under Electron userData directory.
+ * Returns the persisted config file location in userData.
  */
-function getConfigPath(userDataDir: string): string {
-	return join(userDataDir, "launcher-config.json");
+function getConfigPath(): string {
+	return join(app.getPath("userData"), "morpho-config.json");
 }
 
 /**
- * Loads persisted launcher overrides if available.
+ * Reads current persisted app configuration.
  */
-export function loadPersistedConfig(userDataDir: string): PersistedLauncherConfig {
-	const configPath = getConfigPath(userDataDir);
-	if (!existsSync(configPath)) {
-		return {};
+export function getConfig(): MorphoConfig {
+	const filePath = getConfigPath();
+	if (!existsSync(filePath)) {
+		return getDefaultConfig();
 	}
 	try {
-		const raw = readFileSync(configPath, "utf8");
-		return JSON.parse(raw) as PersistedLauncherConfig;
+		const raw = readFileSync(filePath, "utf8");
+		return {
+			...getDefaultConfig(),
+			...(JSON.parse(raw) as MorphoConfig),
+		};
 	} catch (_error) {
-		return {};
+		return getDefaultConfig();
 	}
 }
 
 /**
- * Persists launcher overrides for future app boots.
+ * Updates config using a partial patch while preserving structure.
  */
-export function savePersistedConfig(userDataDir: string, config: PersistedLauncherConfig): void {
-	const configPath = getConfigPath(userDataDir);
-	const parent = dirname(configPath);
+export function setConfig(patch: Partial<MorphoConfig>): MorphoConfig {
+	const current = getConfig();
+	const merged: MorphoConfig = {
+		...current,
+		...patch,
+		groupListening: {
+			...current.groupListening,
+			...(patch.groupListening ?? {}),
+		},
+	};
+	const filePath = getConfigPath();
+	const parent = dirname(filePath);
 	if (!existsSync(parent)) {
 		mkdirSync(parent, { recursive: true });
 	}
-	writeFileSync(configPath, JSON.stringify(config, null, 2), "utf8");
-}
-
-/**
- * Applies persisted values on top of runtime defaults.
- */
-export function mergeConfig(defaults: LauncherConfig, persisted: PersistedLauncherConfig): LauncherConfig {
-	return {
-		...defaults,
-		amazonExePath: persisted.amazonExePath || defaults.amazonExePath,
-	};
+	writeFileSync(filePath, JSON.stringify(merged, null, 2), "utf8");
+	return merged;
 }

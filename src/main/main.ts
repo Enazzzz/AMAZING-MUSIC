@@ -1,22 +1,21 @@
-import { app, BrowserWindow, dialog } from "electron";
-import { join } from "node:path";
+import { app, BrowserWindow, dialog, nativeTheme } from "electron";
+import { getConfig, setConfig } from "./configStore";
+import { validateAmazonExePath } from "./launcherConfig";
 import { AmazonLauncherService } from "./amazonLauncher";
-import { getDefaultLauncherConfig, validateAmazonExePath } from "./launcherConfig";
-import { registerIpcHandlers } from "./ipc/registerIpcHandlers";
-import { loadPersistedConfig, mergeConfig, savePersistedConfig } from "./configStore";
+import { GroupListeningServer } from "./groupListening/syncServer";
 
 /**
- * Creates the launcher renderer window.
+ * Creates a tiny hidden window to keep Electron alive.
  */
-function createWindow(): BrowserWindow {
+function createKeepAliveWindow(): BrowserWindow {
 	return new BrowserWindow({
-		width: 1280,
-		height: 860,
-		minWidth: 980,
-		minHeight: 640,
-		backgroundColor: "#0b0f1a",
+		width: 1,
+		height: 1,
+		show: false,
+		skipTaskbar: true,
+		frame: false,
+		resizable: false,
 		webPreferences: {
-			preload: join(__dirname, "../preload/preload.js"),
 			contextIsolation: true,
 			nodeIntegration: false,
 		},
@@ -24,66 +23,77 @@ function createWindow(): BrowserWindow {
 }
 
 /**
- * Prompts the user to locate Amazon Music.exe when auto-detection fails.
+ * Prompts for a valid Amazon Music executable when config path is invalid.
  */
 async function promptForAmazonExePath(): Promise<string | null> {
-	const result = await dialog.showOpenDialog({
-		title: "Locate Amazon Music executable",
+	const selection = await dialog.showOpenDialog({
+		title: "Select Amazon Music executable",
 		properties: ["openFile"],
 		filters: [{ name: "Executable", extensions: ["exe"] }],
 	});
-	if (result.canceled || !result.filePaths[0]) {
+	if (selection.canceled || !selection.filePaths[0]) {
 		return null;
 	}
-	return result.filePaths[0];
+	return selection.filePaths[0];
 }
 
 /**
- * Boots the Electron app and wires the launcher services.
+ * Bootstraps Electron app lifecycle, config validation, and launcher startup.
  */
 async function bootstrap(): Promise<void> {
-	const defaults = getDefaultLauncherConfig();
-	const persisted = loadPersistedConfig(app.getPath("userData"));
-	let config = mergeConfig(defaults, persisted);
+	nativeTheme.themeSource = "dark";
+	const config = getConfig();
 
-	let validation = validateAmazonExePath(config.amazonExePath);
-	if (!validation.ok) {
-		const selectedPath = await promptForAmazonExePath();
-		if (!selectedPath) {
-			void dialog.showErrorBox("Amazon Music not found", validation.message || "Missing executable path.");
-			app.quit();
-			return;
+	// Sandboxie-compatible mode: run only the Group Listening server (no Amazon launch / no CDP worker).
+	// This lets you run Amazon inside each sandbox independently and then inject the extension via the injector shortcut.
+	const serverOnly = process.env.MORPHO_SERVER_ONLY === "1" || process.env.MORPHO_SKIP_AMAZON === "1";
+	if (!serverOnly) {
+		let exeValidation = validateAmazonExePath(config.amazonExePath);
+		if (!exeValidation.ok) {
+			const selectedPath = await promptForAmazonExePath();
+			if (!selectedPath) {
+				throw new Error(exeValidation.message ?? "Amazon Music executable path is required.");
+			}
+			setConfig({ amazonExePath: selectedPath });
+			exeValidation = validateAmazonExePath(selectedPath);
+			if (!exeValidation.ok) {
+				throw new Error(exeValidation.message ?? "Invalid Amazon Music executable.");
+			}
 		}
-		config = { ...config, amazonExePath: selectedPath };
-		validation = validateAmazonExePath(config.amazonExePath);
-		if (!validation.ok) {
-			void dialog.showErrorBox("Invalid executable", validation.message || "Unable to use selected executable.");
-			app.quit();
-			return;
-		}
-		savePersistedConfig(app.getPath("userData"), { amazonExePath: selectedPath });
 	}
 
-	const mainWindow = createWindow();
-	const launcher = new AmazonLauncherService(config);
-	registerIpcHandlers(mainWindow, launcher);
-	await mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
-	const startResult = await launcher.start();
-	if (config.hideAmazonWindow && !startResult.hiddenWindow) {
-		mainWindow.webContents.send(
-			"amazon:diagnostic",
-			"Amazon Music launched and connected, but the native window could not be hidden automatically."
-		);
+	const groupServer = new GroupListeningServer();
+	groupServer.start(config.groupListening.port);
+
+	// Morpho UI is intentionally disabled: Electron exists only to run the CDP launcher/extension injector.
+	const keepAliveWindow = createKeepAliveWindow();
+
+	const launcher = serverOnly ? null : new AmazonLauncherService(app, getConfig());
+	if (launcher) {
+		void launcher
+			.start()
+			.then((startResult) => {
+				if (!startResult.hiddenWindow && getConfig().hideAmazonWindow) {
+					console.warn("[Morpho] Amazon Music launched but its native window was not hidden automatically.");
+				}
+			})
+			.catch((error) => {
+				console.error("[Morpho] Amazon launcher failed to start:", error);
+			});
 	}
 
 	app.on("before-quit", () => {
-		void launcher.stop();
+		if (launcher) {
+			void launcher.stop();
+		}
+		groupServer.stop();
+		keepAliveWindow.destroy();
 	});
 }
 
 app.whenReady().then(() => {
 	void bootstrap().catch((error) => {
-		void dialog.showErrorBox("Launcher startup failed", String(error));
+		dialog.showErrorBox("Morpho startup failed", String(error));
 		app.quit();
 	});
 });
