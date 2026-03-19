@@ -349,6 +349,14 @@ export function buildInjectMorphoExtensionExpression(wsUrl: string): string {
 				".morpho-ext-btn:hover{background:rgba(255,255,255,0.12);}",
 				"#morpho-ext-status{font:500 12px/1.4 sans-serif;color:rgba(255,255,255,0.75);}",
 				"#morpho-ext-code{font:700 18px/1.1 sans-serif;color:#fff;letter-spacing:0.06em;}",
+				"#morpho-ext-tempo{margin-top:8px;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);}",
+				".morpho-ext-tempo-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}",
+				".morpho-ext-tempo-value{font:700 12px/1 sans-serif;color:#fff;letter-spacing:0.08em;}",
+				".morpho-ext-tempo-slider{width:100%;margin-top:8px;}",
+				".morpho-ext-chip-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}",
+				".morpho-ext-chip{border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.06);color:#fff;padding:6px 9px;cursor:pointer;font:600 11px/1 sans-serif;}",
+				".morpho-ext-chip:hover{background:rgba(255,255,255,0.12);}",
+				"#morpho-ext-tempo-note{margin-top:8px;font:500 11px/1.35 sans-serif;color:rgba(255,255,255,0.72);}",
 				"#morpho-ext-chat{height:240px;overflow:auto;border-radius:14px;border:1px solid rgba(255,255,255,0.12);background:rgba(0,0,0,0.18);padding:10px;margin-top:12px;}",
 				".morpho-ext-msg{font:500 12px/1.4 sans-serif;color:rgba(255,255,255,0.85);margin:6px 0;}",
 			].join("\\n");
@@ -404,6 +412,34 @@ export function buildInjectMorphoExtensionExpression(wsUrl: string): string {
 		btnRow.appendChild(hostBtn);
 		btnRow.appendChild(joinBtn);
 
+		var tempoBox = createEl("div", "", "");
+		tempoBox.id = "morpho-ext-tempo";
+		var tempoHead = createEl("div", "morpho-ext-tempo-head", "");
+		var tempoLabel = createEl("div", "morpho-ext-label", "Tempo (Pitch Preserved)");
+		var tempoValue = createEl("div", "morpho-ext-tempo-value", "1.00X");
+		tempoHead.appendChild(tempoLabel);
+		tempoHead.appendChild(tempoValue);
+		var tempoSlider = createEl("input", "morpho-ext-tempo-slider", "");
+		tempoSlider.type = "range";
+		tempoSlider.min = "0.50";
+		tempoSlider.max = "2.00";
+		tempoSlider.step = "0.05";
+		tempoSlider.value = "1.00";
+		var tempoChipRow = createEl("div", "morpho-ext-chip-row", "");
+		var tempoPresets = ["0.75", "1.00", "1.25", "1.50", "2.00"];
+		for (var p = 0; p < tempoPresets.length; p += 1) {
+			var preset = tempoPresets[p];
+			var chip = createEl("button", "morpho-ext-chip", String(preset) + "X");
+			chip.setAttribute("data-tempo", preset);
+			tempoChipRow.appendChild(chip);
+		}
+		var tempoNote = createEl("div", "", "Uses Amazon's native Player.setTempo bridge (pitch-preserving where supported).");
+		tempoNote.id = "morpho-ext-tempo-note";
+		tempoBox.appendChild(tempoHead);
+		tempoBox.appendChild(tempoSlider);
+		tempoBox.appendChild(tempoChipRow);
+		tempoBox.appendChild(tempoNote);
+
 		var chat = createEl("div", "", "");
 		chat.id = "morpho-ext-chat";
 		var chatInputRow = createEl("div", "morpho-ext-row", "");
@@ -421,6 +457,7 @@ export function buildInjectMorphoExtensionExpression(wsUrl: string): string {
 		panel.appendChild(nameRow);
 		panel.appendChild(joinRow);
 		panel.appendChild(btnRow);
+		panel.appendChild(tempoBox);
 		panel.appendChild(chat);
 		panel.appendChild(chatInputRow);
 
@@ -462,6 +499,71 @@ export function buildInjectMorphoExtensionExpression(wsUrl: string): string {
 			var el = createEl("div", "morpho-ext-msg", line);
 			chat.appendChild(el);
 			chat.scrollTop = chat.scrollHeight;
+		}
+
+		function getTempoFromStore() {
+			try {
+				var s = window.App && window.App.$store && window.App.$store.state;
+				var t = s && s.player && s.player.settings && s.player.settings.tempo;
+				var n = Number(t);
+				if (!isFinite(n) || n <= 0) return 1;
+				return n;
+			} catch (e) {
+				return 1;
+			}
+		}
+
+		function clampTempo(n) {
+			var v = Number(n);
+			if (!isFinite(v)) v = 1;
+			if (v < 0.5) v = 0.5;
+			if (v > 2) v = 2;
+			return Number(v.toFixed(2));
+		}
+
+		function renderTempoUi(n) {
+			var t = clampTempo(n);
+			tempoSlider.value = t.toFixed(2);
+			tempoValue.textContent = t.toFixed(2) + "X";
+		}
+
+		function getBridgeExecute() {
+			var reqLocal = window.__amazon_require__;
+			if (typeof reqLocal !== "function") throw new Error("window.__amazon_require__ missing");
+			var m = reqLocal("6586");
+			var bridge = m && (m.a || m.default || m);
+			if (!bridge || typeof bridge.execute !== "function") throw new Error("bridge.execute unavailable");
+			return bridge.execute.bind(bridge);
+		}
+
+		function setTempoWithWarning(targetTempo) {
+			var target = clampTempo(targetTempo);
+			renderTempoUi(target);
+			var execute = null;
+			try {
+				execute = getBridgeExecute();
+			} catch (e) {
+				tempoNote.textContent = "Tempo bridge unavailable right now. Try again in a few seconds.";
+				return;
+			}
+
+			try {
+				execute("Player.setTempo", target);
+			} catch (e2) {
+				tempoNote.textContent = "Tempo failed: " + (e2 && e2.message ? e2.message : String(e2));
+				return;
+			}
+
+			tempoNote.textContent = "Applying " + target.toFixed(2) + "X...";
+			setTimeout(function() {
+				var observed = clampTempo(getTempoFromStore());
+				renderTempoUi(observed);
+				if (Math.abs(observed - target) > 0.01) {
+					tempoNote.textContent = "Tempo appears unsupported for this content. Amazon usually supports this on podcasts.";
+				} else {
+					tempoNote.textContent = "Tempo applied via Amazon native bridge.";
+				}
+			}, 500);
 		}
 
 		function connectHost() {
@@ -601,6 +703,23 @@ export function buildInjectMorphoExtensionExpression(wsUrl: string): string {
 			}));
 			chatInput.value = "";
 		});
+
+		tempoSlider.addEventListener("input", function() {
+			renderTempoUi(tempoSlider.value);
+		});
+		tempoSlider.addEventListener("change", function() {
+			setTempoWithWarning(tempoSlider.value);
+		});
+		tempoChipRow.addEventListener("click", function(evt) {
+			var target = evt && evt.target;
+			if (!target || !target.getAttribute) return;
+			var dataTempo = target.getAttribute("data-tempo");
+			if (!dataTempo) return;
+			setTempoWithWarning(dataTempo);
+		});
+
+		// Initialize tempo UI from live store state when possible.
+		renderTempoUi(getTempoFromStore());
 
 		// Host broadcaster loop.
 		setInterval(function() {

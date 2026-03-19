@@ -1,42 +1,47 @@
-# AMAZING MUSIC
+# Morpho (AMAZING-MUSIC)
 
-A custom Electron-based launcher for Amazon Music Desktop that communicates with the app through direct internal function calls via the Chrome DevTools Protocol (CDP).
+Morpho is an Electron + CDP toolkit that injects a custom extension panel into the Amazon Music Desktop app.
 
-## What This Does
+Current repo focus:
 
-Amazon Music Desktop is a CEF (Chromium Embedded Framework) app wrapping a Vue.js web app. This project:
+- run Amazon Music with remote debugging
+- inject a right-side extension UI into Amazon's own webapp
+- control playback through internal bridge/module calls
+- run a built-in Group Listening WebSocket server
 
-1. **Launches** Amazon Music with debug access enabled (`--remote-debugging-port=9222`)
-2. **Connects** to the app's internal runtime via CDP WebSocket
-3. **Injects** a webpack require resolver to access internal modules directly
-4. **Controls** playback through the native Player module — no UI simulation, no fragile DOM clicks
-5. **Reads** full player state (track info, lyrics, queue, audio quality, devices) via Vuex store
-6. **Hides** the native Amazon Music window, presenting its own custom UI
+This is no longer primarily a standalone replacement renderer UI project.
 
-## How It Works
+## What It Is Right Now
 
+Amazon Music Desktop is a CEF app running `amazon.com/morpho`. Morpho connects through CDP and injects an in-page extension panel that currently includes:
+
+- Group Listening controls (host/listener join, room code, chat)
+- listener sync (pause/resume/seek)
+- tempo controls wired to native `Player.setTempo`
+
+Important architecture notes:
+
+- The injected extension runs in Amazon's page context.
+- Playback control uses internal webpack modules (`"0903"` player and `"6586"` native bridge).
+- The Electron process can run in `server-only` mode (Group Listening backend only).
+
+## High-Level Flow
+
+```text
+Morpho (Electron/Node)
+  ├─ Launch Amazon with --remote-debugging-port=9222 (optional in server-only workflows)
+  ├─ Discover CDP target via http://localhost:<port>/json
+  ├─ Connect CDP websocket
+  ├─ Inject webpack require resolver (window.__amazon_require__)
+  ├─ Inject Morpho extension panel into Amazon DOM
+  └─ (Optional) run GroupListeningServer (ws://host:port)
 ```
-Electron Launcher
-  │
-  ├── Spawns Amazon Music with --remote-debugging-port=9222
-  ├── Discovers Morpho target via GET /json
-  ├── Connects CDP WebSocket
-  ├── Injects webpack require resolver (once per session)
-  ├── Loads Player module: require("0903").a
-  │
-  ├── Controls:  player.playNext(), player.setPaused(true), player.setVolume(0.5), ...
-  └── Reads:     window.App.$store.state.player.*
-```
-
-The key insight is that Vuex `dispatch("player/*")` actions only update state — they don't drive the audio engine. The actual playback is controlled by the internal Player module (webpack module `"0903"`), which calls through a native CEF bridge (`s["a"].execute("Player.*")`). We access this module by injecting a synthetic webpack chunk that captures the internal `require` function.
-
-See [amazon-music-reverse-engineering.md](amazon-music-reverse-engineering.md) for the full reverse engineering documentation.
 
 ## Prerequisites
 
-- **Windows** (tested on Windows 10/11)
-- **Amazon Music Desktop** installed at the default location
-- **Node.js** 18+
+- Windows 10/11
+- Amazon Music Desktop installed
+- Node.js 18+
 
 ## Setup
 
@@ -46,95 +51,89 @@ cd AMAZING-MUSIC
 npm install
 ```
 
-## Usage
+## Common Commands
 
-### Run the Electron launcher
-
-```bash
-npm start
-```
-
-### Run standalone test scripts
-
-These connect to an already-running Amazon Music instance (launch it manually with `--remote-debugging-port=9222` first):
+### Build / dev
 
 ```bash
-# Skip to next track via direct internal function call
-npm run dev:direct-next
-
-# Skip to next track via DOM button click (fallback approach)
-npm run dev:next
+npm run build
+npm run build:main
+npm run dev
+npm run test
+npm run typecheck
 ```
 
-### Development
+### Runtime helpers
 
 ```bash
-npm run build       # Compile TypeScript + copy assets
-npm run dev         # Build and launch
-npm run test        # Run unit tests
-npm run typecheck   # Type-check without emitting
+# Run only the Group Listening websocket server (no Amazon launcher)
+npm run server:only
+
+# One-shot CDP extension injector
+npm run inject:extension
+
+# Fake host generator for local listener sync testing
+npm run fake:host
 ```
 
-## Project Structure
+PowerShell helpers in `scripts/`:
 
-```
+- `scripts/inject-extension.ps1`
+- `scripts/run-amazon-and-inject.ps1`
+- `scripts/run-local-two-amazon-and-inject.ps1`
+- `scripts/run-fake-host.ps1`
+
+## Repo Layout (Current)
+
+```text
 src/
-  main/                          # Electron main process
-    main.ts                      # Entry point, app lifecycle
-    amazonLauncher.ts            # Amazon Music process + CDP management
-    configStore.ts               # Persistent config (exe path)
-    launcherConfig.ts            # Configuration defaults
+  main/
+    main.ts                        # app bootstrap, server-only mode, lifecycle
+    amazonLauncher.ts              # host process <-> worker bridge
+    configStore.ts                 # persistent config
     cdp/
-      cdpClient.ts               # Minimal CDP WebSocket client
-      amazonBridge.ts            # JS expression builders for CDP
-    ipc/
-      registerIpcHandlers.ts     # Electron IPC handlers
-    windows/
-      win32WindowHider.ts        # Native window hiding (Windows)
-  preload/
-    preload.ts                   # Secure renderer bridge
-  renderer/
-    app.ts                       # UI logic
-    index.html                   # UI markup
-    styles.css                   # UI styles
+      cdpClient.ts                 # minimal CDP websocket client
+      amazonBridge.ts              # injected JS expression builders (core extension logic)
+      discovery.ts                 # static bridge discovery helper
+      bridgeDiscoveryLogger.ts     # runtime discovery logging
+    groupListening/
+      syncServer.ts                # host/listener room websocket server
+  launcher/
+    worker.ts                      # isolated launcher runtime
+    injectExtension.ts             # standalone injector entrypoint
+    fakeGroupHost.ts               # fake host for one-machine listener testing
   shared/
-    types.ts                     # Shared TypeScript interfaces
-tests/
-  dev-direct-next.ts             # Standalone: direct Player.playNext() via CDP
-  dev-next.ts                    # Standalone: DOM button click via CDP
-  amazonBridge.test.ts           # Unit tests
-  cdpClient.test.ts              # Unit tests
+    types.ts                       # shared command/state types
+scripts/
+  *.ps1                            # convenience wrappers
+docs/
+  amazon-music-reverse-engineering.md  # mirror pointer
+  bridge-api-map.md                    # static execute() command map
 ```
 
-## Player Module API
+## Reverse Engineering References
 
-All methods on `require("0903").a` — the internal Player controller:
+- Canonical deep-dive: [amazon-music-reverse-engineering.md](amazon-music-reverse-engineering.md)
+- Static bridge list: [docs/bridge-api-map.md](docs/bridge-api-map.md)
 
-| Method | Description |
-|---|---|
-| `playNext()` | Skip to next track |
-| `playPrevious()` | Go to previous track |
-| `setPaused(bool)` | Pause (`true`) or resume (`false`) |
-| `setVolume(0.0-1.0)` | Set volume |
-| `toggleMute()` | Toggle mute |
-| `setShuffle(bool)` | Enable/disable shuffle |
-| `toggleRepeat()` | Cycle repeat (NONE → ALL → ONE) |
-| `seek(ms)` | Seek to position in milliseconds |
-| `setAudioQuality(q)` | `'STANDARD'`, `'HD'`, `'ULTRA_HD'` |
-| `setOutputDevice(id)` | Switch audio output device |
-| `insertNext(tracks)` | Add tracks to play next |
-| `appendTracks(tracks)` | Add tracks to end of queue |
-| `toggleLoudnessNormalization()` | Toggle loudness normalization |
+Recent findings now reflected in code:
+
+- `Player.setTempo` is a real native bridge call and can be executed via module `"6586"` `execute("Player.setTempo", value)`.
+- Tempo state is readable from `window.App.$store.state.player.settings.tempo`.
+- No clear separate native pitch-shift API surfaced in static bundle strings; pitch-preserving behavior appears tied to Amazon's tempo/playback-speed path.
+
+## Known Constraints
+
+- Amazon Music is effectively single-instance on many setups.
+- Sandbox networking can block host loopback access, which affects Group Listening tests.
+- CDP injection timing matters; injecting too early can fail while modules are still booting.
+- Internal module IDs and bridge contracts can change with Amazon app updates.
 
 ## Disclaimer
 
-This project is for **personal, non-commercial, educational use only**. It does not extract, intercept, or redistribute any audio streams (which are Widevine DRM-encrypted). It interacts solely with metadata and playback controls through the app's own internal APIs.
+For personal, non-commercial, educational use only. This project does not decrypt or redistribute audio streams and only interacts with app metadata/control surfaces via internal APIs.
 
-**Amazon Music**, the Amazon Music logo, and all related names, marks, and branding are trademarks or registered trademarks of **Amazon.com, Inc.** or its affiliates. This project is not affiliated with, endorsed by, or sponsored by Amazon in any way.
-
-All intellectual property rights in the Amazon Music application, its source code, assets, and services belong to their respective owners.
-
-**The author(s) of this project accept no responsibility or liability for any misuse of this code.** By using this software, you agree that you do so entirely at your own risk and that you are solely responsible for compliance with all applicable laws and terms of service.
+Amazon Music and related marks are trademarks of Amazon.com, Inc. This project is not affiliated with or endorsed by Amazon.
 
 ## License
 

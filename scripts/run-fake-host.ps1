@@ -23,13 +23,29 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$cmd = "npm run fake:host -- --wsUrl=$WsUrl --name=$Name --intervalMs=$IntervalMs --stepMs=$StepMs --startTimeMs=$StartTimeMs --isPlaying=$IsPlaying"
-if ($RoomCode) {
-	$cmd += " --roomCode=$RoomCode"
+ $projectRoot = Split-Path -Parent $PSScriptRoot
+ Push-Location $projectRoot
+ $cmdArgs = @(
+ 	"run",
+ 	"fake:host",
+ 	"--",
+ 	"--wsUrl=$WsUrl",
+ 	"--name=$Name",
+ 	"--intervalMs=$IntervalMs",
+ 	"--stepMs=$StepMs",
+ 	"--startTimeMs=$StartTimeMs",
+	"--isPlaying=$IsPlaying"
+ )
+ if ($RoomCode) {
+ 	$cmdArgs += "--roomCode=$RoomCode"
+ }
+
+Write-Host "[fake-host] Running in $projectRoot ..."
+Write-Host ("npm " + ($cmdArgs -join " "))
+
+try {
+	& npm @cmdArgs
+} finally {
+	Pop-Location | Out-Null
 }
-
-Write-Host "[fake-host] Running:"
-Write-Host $cmd
-
-cmd /c $cmd
 

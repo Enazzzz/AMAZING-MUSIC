@@ -102,6 +102,8 @@ Generated from static analysis of `exported/app.js`.
 - Album art URL size params detected: yes
 - Rating calls detected: rateCqEntity, rateEntity
 - EQ or DSP-related calls detected: Player.initiateQueueResponse, Player.registerInitiateQueue
+- Tempo control command is present and callable: `Player.setTempo`
+- No distinct static bridge command for independent pitch/semitone shifting found in current bundle scan
 
 ## TODO Probes
 
@@ -109,5 +111,5 @@ Generated from static analysis of `exported/app.js`.
 - Probe album art URL rewriting patterns (`._SX400_`, `._UX400_`) and force highest stable size.
 - Probe `Player.rateEntity` argument shape from runtime intercept logs (entity id, direction, context).
 - Probe EQ/DSP bridge names by runtime intercept during settings interactions.
+- Probe whether any pitch-specific command is generated dynamically at runtime (none found in static strings).
 - Validate whether `User.*` or `Playback.*` execute calls are hidden behind dynamic command strings.
-

@@ -8,6 +8,35 @@ Chrome DevTools Protocol (CDP), which can be activated at launch with a single f
 
 ---
 
+## Addendum — Validated Findings (2026-03)
+
+### Tempo / speed control
+
+- `Player.setTempo` is a valid native bridge command.
+- Static bundle evidence:
+  - `setPodcastPlaybackSpeed(e)` delegates to strategy `setTempo`.
+  - `setTempo(e)` calls `execute("Player.setTempo", e)`.
+- Runtime state source for current value: `window.App.$store.state.player.settings.tempo`.
+
+Practical implication:
+- Tempo control can be implemented without audio rerouting by calling bridge `execute("Player.setTempo", value)` from injected code.
+- No separate `Player.setPitch*` / semitone-style bridge call has been found in static bundle strings so far.
+- Pitch-preserving behavior appears to be part of Amazon's own tempo/time-stretch path (content-dependent, most obvious on podcast flows).
+
+### Native bridge module reminder
+
+- Native bridge module remains `require("6586")`.
+- Call shape used by Morpho:
+  - `var bridge = req("6586").a`
+  - `bridge.execute("Player.setTempo", tempo)`
+
+### Multi-instance behavior note
+
+- On many installs, launching a second Amazon Music process focuses the existing window instead of creating a second independent instance.
+- For local sync testing, a fake host websocket client is often more reliable than trying to run two real Amazon instances.
+
+---
+
 ## 1. Launching with Debug Access
 
 ### Command
