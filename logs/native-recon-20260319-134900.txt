@@ -1,0 +1,477 @@
+﻿Native recon start: 2026-03-19T13:49:00.1870001-07:00
+Target process name: Amazon Music.exe
+DurationSeconds: 30
+
+=== targets ===
+
+
+ProcessId       : 19364
+ParentProcessId : 16012
+Name            : Amazon Music.exe
+CommandLine     : "C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --remote-debugging-port=9222
+ExecutablePath  : C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe
+
+ProcessId       : 28660
+ParentProcessId : 19364
+Name            : Amazon Music.exe
+CommandLine     : "C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=crashpad-handler /prefetch:7 --max-uploads=5 --max-db-size=15 
+                  --max-db-age=5 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\Zanea\AppData\Local\Amazon Music\User Data\Crashpad" 
+                  "--metrics-dir=C:\Users\Zanea\AppData\Local\Amazon Music\User Data" --annotation=platform=win32 "--annotation=product=Amazon Music" 
+                  --annotation=version=9.5.2.2478 --initial-client-data=0x4f0,0x4f4,0x4f8,0x4ec,0x4fc,0x536f5780,0x536f5790,0x536f579c
+ExecutablePath  : C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe
+
+ProcessId       : 16380
+ParentProcessId : 19364
+Name            : Amazon Music.exe
+CommandLine     : "C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=gpu-process 
+                  --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame 
+                  --no-sandbox --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --log-severity=info --user-agent="Mozilla/5.0 
+                  (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko)  Morpho/9.5.2.2478 Safari/537.36" --lang=en_US --gpu-preferences=KAAAAAAAAA
+                  DoAAAwAAAAAAAAYAAAAAAAEAAAAAAAAAAAAAAAAAAAACgAAAAEAAAAIAAAAAAAAAAoAAAAAAAAADAAAAAAAAAAOAAAAAAAAAAQAAAAAAAAAAAAAAAFAAAAEAAAAAAAAAAAAAAABgAAA
+                  BAAAAAAAAAAAQAAAAUAAAAQAAAAAAAAAAEAAAAGAAAA --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" 
+                  --service-request-channel-token=14411811664297763924 --mojo-platform-channel-handle=2020 /prefetch:2
+ExecutablePath  : C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe
+
+ProcessId       : 5432
+ParentProcessId : 19364
+Name            : Amazon Music.exe
+CommandLine     : "C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=utility 
+                  --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame 
+                  --lang=en-US --service-sandbox-type=network --no-sandbox --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" 
+                  --log-severity=info --user-agent="Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko)  Morpho/9.5.2.2478 
+                  Safari/537.36" --lang=en_US --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" 
+                  --service-request-channel-token=7522340823306770530 --mojo-platform-channel-handle=3624 /prefetch:8
+ExecutablePath  : C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe
+
+ProcessId       : 6620
+ParentProcessId : 19364
+Name            : Amazon Music.exe
+CommandLine     : "C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=renderer --no-sandbox --enable-accessibility-object-model 
+                  --enable-touch-drag-drop --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --remote-debugging-port=9222 
+                  --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame 
+                  --lang=en-US --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --log-severity=info --user-agent="Mozilla/5.0 
+                  (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko)  Morpho/9.5.2.2478 Safari/537.36" --uncaught-exception-stack-size=10 
+                  --device-scale-factor=1 --num-raster-threads=4 --enable-main-frame-before-activation --service-request-channel-token=10383337903861116136 
+                  --renderer-client-id=4 --mojo-platform-channel-handle=3544 /prefetch:1
+ExecutablePath  : C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe
+
+ProcessId       : 13020
+ParentProcessId : 6320
+Name            : powershell.exe
+CommandLine     : "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File 
+                  C:\Robotics\AMAZING-MUSIC\scripts\run-native-recon.ps1 -ProcessName "Amazon Music.exe" -DurationSeconds 30
+ExecutablePath  : C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+
+
+
+
+
+=== process-tree-initial ===
+PID 19364 Amazon Music.exe
+  -> PID 28660 Amazon Music.exe
+  -> PID 16380 Amazon Music.exe
+  -> PID 5432 Amazon Music.exe
+  -> PID 6620 Amazon Music.exe
+PID 28660 Amazon Music.exe
+PID 16380 Amazon Music.exe
+PID 5432 Amazon Music.exe
+PID 6620 Amazon Music.exe
+PID 13020 powershell.exe
+
+=== modules-pid-19364 ===
+
+Image Name                     PID Modules                                     
+========================= ======== ============================================
+Amazon Music.exe             19364 ntdll.dll, wow64.dll, wow64base.dll,        
+                                   wow64win.dll, wow64con.dll, wow64cpu.dll    
+
+
+=== modules-pid-28660 ===
+
+Image Name                     PID Modules                                     
+========================= ======== ============================================
+Amazon Music.exe             28660 ntdll.dll, wow64.dll, wow64base.dll,        
+                                   wow64win.dll, wow64con.dll, wow64cpu.dll    
+
+
+=== modules-pid-16380 ===
+
+Image Name                     PID Modules                                     
+========================= ======== ============================================
+Amazon Music.exe             16380 ntdll.dll, wow64.dll, wow64base.dll,        
+                                   wow64win.dll, wow64con.dll, wow64cpu.dll    
+
+
+=== modules-pid-5432 ===
+
+Image Name                     PID Modules                                     
+========================= ======== ============================================
+Amazon Music.exe              5432 ntdll.dll, wow64.dll, wow64base.dll,        
+                                   wow64win.dll, wow64con.dll, wow64cpu.dll    
+
+
+=== modules-pid-6620 ===
+
+Image Name                     PID Modules                                     
+========================= ======== ============================================
+Amazon Music.exe              6620 ntdll.dll, wow64.dll, wow64base.dll,        
+                                   wow64win.dll, wow64con.dll, wow64cpu.dll    
+
+
+=== modules-pid-13020 ===
+
+Image Name                     PID Modules                                     
+========================= ======== ============================================
+powershell.exe               13020 ntdll.dll, KERNEL32.DLL, KERNELBASE.dll,    
+                                   msvcrt.dll, OLEAUT32.dll, msvcp_win.dll,    
+                                   ucrtbase.dll, ATL.DLL, combase.dll,         
+                                   USER32.dll, RPCRT4.dll, win32u.dll,         
+                                   GDI32.dll, ADVAPI32.dll, gdi32full.dll,     
+                                   sechost.dll, OLE32.dll, mscoree.dll,        
+                                   IMM32.DLL, windhawk.dll,                    
+                                   invisible-borders_1.0.0_630647.dll,         
+                                   dwmapi.dll,                                 
+                                   slick-window-arrangement_1.0.2_548945.dll,  
+                                   libunwind.whl, COMCTL32.dll, libc++.whl,    
+                                   shcore.dll,                                 
+                                   translucent-windows_1.7.4_914921.dll,       
+                                   UxTheme.dll, d2d1.dll, MSIMG32.dll,         
+                                   dui70.dll, mscoreei.dll, SHLWAPI.dll,       
+                                   Windows.Storage.dll, kernel.appcore.dll,    
+                                   VERSION.dll, clr.dll,                       
+                                   VCRUNTIME140_CLR0400.dll,                   
+                                   VCRUNTIME140_1_CLR0400.dll,                 
+                                   ucrtbase_clr0400.dll, mscorlib.ni.dll,      
+                                   bcryptPrimitives.dll, System.ni.dll,        
+                                   System.Core.ni.dll,                         
+                                   Microsoft.PowerShell.ConsoleHost.ni.dll,    
+                                   CRYPTSP.dll, rsaenh.dll, CRYPTBASE.dll,     
+                                   bcrypt.dll, clrjit.dll, clbcatq.dll,        
+                                   shell32.dll, wintypes.dll, psapi.dll,       
+                                   amsi.dll, USERENV.dll, profapi.dll,         
+                                   MpOav.dll, System.Numerics.ni.dll,          
+                                   wintrust.dll, CRYPT32.dll, MSASN1.dll,      
+                                   System.Xml.ni.dll,                          
+                                   System.DirectoryServices.ni.dll,            
+                                   System.Management.ni.dll, gpapi.dll,        
+                                   wldp.dll, System.Data.ni.dll,               
+                                   System.Data.dll, WS2_32.dll, MSISIP.DLL,    
+                                   wshext.dll, AppxSip.dll, OpcServices.DLL,   
+                                   Windows.StateRepositoryPS.dll,              
+                                   pwrshsip.dll, System.Configuration.ni.dll,  
+                                   Microsoft.PowerShell.Security.ni.dll,       
+                                   System.Transactions.ni.dll,                 
+                                   System.Transactions.dll, secur32.dll,       
+                                   SSPICLI.DLL, MPCLIENT.DLL,                  
+                                   System.Configuration.Install.ni.dll,        
+                                   System.ServiceProcess.ni.dll,               
+                                   System.Drawing.ni.dll,                      
+                                   System.Windows.Forms.ni.dll,                
+                                   Microsoft.Management.Infrastructure.Native.U
+                                   nmanaged.DLL, mi.dll, miutils.dll,          
+                                   wmidcom.dll, wbemprox.dll, wbemcomn.dll,    
+                                   wbemsvc.dll, fastprox.dll                   
+
+
+=== timed-snapshot-0s ===
+ts: 2026-03-19T13:49:06.4022706-07:00
+count: 6
+  pid=19364 ppid=16012 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --remote-debugging-port=9222
+    child pid=28660 name=Amazon Music.exe
+    child pid=16380 name=Amazon Music.exe
+    child pid=5432 name=Amazon Music.exe
+    child pid=6620 name=Amazon Music.exe
+  pid=28660 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=crashpad-handler /prefetch:7 --max-uploads=5 --max-db-size=15 --max-db-age=5 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\Zanea\AppData\Local\Amazon Music\User Data\Crashpad" "--metrics-dir=C:\Users\Zanea\Ap...(truncated)
+  pid=16380 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=gpu-process --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --no-sandbox --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --log-se...(truncated)
+  pid=5432 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=utility --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --lang=en-US --service-sandbox-type=network --no-sandbox --log-file="C:\Users\Zanea\AppData\Local...(truncated)
+  pid=6620 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=renderer --no-sandbox --enable-accessibility-object-model --enable-touch-drag-drop --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --remote-debugging-port=9222 --field-trial-handle=1968,4811524519358775796,56...(truncated)
+  pid=13020 ppid=6320 name=powershell.exe
+    cmd="C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File C:\Robotics\AMAZING-MUSIC\scripts\run-native-recon.ps1 -ProcessName "Amazon Music.exe" -DurationSeconds 30
+
+=== timed-snapshot-2s ===
+ts: 2026-03-19T13:49:09.1607272-07:00
+count: 6
+  pid=19364 ppid=16012 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --remote-debugging-port=9222
+    child pid=28660 name=Amazon Music.exe
+    child pid=16380 name=Amazon Music.exe
+    child pid=5432 name=Amazon Music.exe
+    child pid=6620 name=Amazon Music.exe
+  pid=28660 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=crashpad-handler /prefetch:7 --max-uploads=5 --max-db-size=15 --max-db-age=5 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\Zanea\AppData\Local\Amazon Music\User Data\Crashpad" "--metrics-dir=C:\Users\Zanea\Ap...(truncated)
+  pid=16380 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=gpu-process --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --no-sandbox --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --log-se...(truncated)
+  pid=5432 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=utility --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --lang=en-US --service-sandbox-type=network --no-sandbox --log-file="C:\Users\Zanea\AppData\Local...(truncated)
+  pid=6620 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=renderer --no-sandbox --enable-accessibility-object-model --enable-touch-drag-drop --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --remote-debugging-port=9222 --field-trial-handle=1968,4811524519358775796,56...(truncated)
+  pid=13020 ppid=6320 name=powershell.exe
+    cmd="C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File C:\Robotics\AMAZING-MUSIC\scripts\run-native-recon.ps1 -ProcessName "Amazon Music.exe" -DurationSeconds 30
+
+=== timed-snapshot-4s ===
+ts: 2026-03-19T13:49:11.9243900-07:00
+count: 6
+  pid=19364 ppid=16012 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --remote-debugging-port=9222
+    child pid=28660 name=Amazon Music.exe
+    child pid=16380 name=Amazon Music.exe
+    child pid=5432 name=Amazon Music.exe
+    child pid=6620 name=Amazon Music.exe
+  pid=28660 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=crashpad-handler /prefetch:7 --max-uploads=5 --max-db-size=15 --max-db-age=5 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\Zanea\AppData\Local\Amazon Music\User Data\Crashpad" "--metrics-dir=C:\Users\Zanea\Ap...(truncated)
+  pid=16380 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=gpu-process --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --no-sandbox --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --log-se...(truncated)
+  pid=5432 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=utility --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --lang=en-US --service-sandbox-type=network --no-sandbox --log-file="C:\Users\Zanea\AppData\Local...(truncated)
+  pid=6620 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=renderer --no-sandbox --enable-accessibility-object-model --enable-touch-drag-drop --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --remote-debugging-port=9222 --field-trial-handle=1968,4811524519358775796,56...(truncated)
+  pid=13020 ppid=6320 name=powershell.exe
+    cmd="C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File C:\Robotics\AMAZING-MUSIC\scripts\run-native-recon.ps1 -ProcessName "Amazon Music.exe" -DurationSeconds 30
+
+=== timed-snapshot-6s ===
+ts: 2026-03-19T13:49:14.7920153-07:00
+count: 6
+  pid=19364 ppid=16012 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --remote-debugging-port=9222
+    child pid=28660 name=Amazon Music.exe
+    child pid=16380 name=Amazon Music.exe
+    child pid=5432 name=Amazon Music.exe
+    child pid=6620 name=Amazon Music.exe
+  pid=28660 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=crashpad-handler /prefetch:7 --max-uploads=5 --max-db-size=15 --max-db-age=5 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\Zanea\AppData\Local\Amazon Music\User Data\Crashpad" "--metrics-dir=C:\Users\Zanea\Ap...(truncated)
+  pid=16380 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=gpu-process --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --no-sandbox --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --log-se...(truncated)
+  pid=5432 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=utility --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --lang=en-US --service-sandbox-type=network --no-sandbox --log-file="C:\Users\Zanea\AppData\Local...(truncated)
+  pid=6620 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=renderer --no-sandbox --enable-accessibility-object-model --enable-touch-drag-drop --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --remote-debugging-port=9222 --field-trial-handle=1968,4811524519358775796,56...(truncated)
+  pid=13020 ppid=6320 name=powershell.exe
+    cmd="C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File C:\Robotics\AMAZING-MUSIC\scripts\run-native-recon.ps1 -ProcessName "Amazon Music.exe" -DurationSeconds 30
+
+=== timed-snapshot-8s ===
+ts: 2026-03-19T13:49:17.9290622-07:00
+count: 6
+  pid=19364 ppid=16012 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --remote-debugging-port=9222
+    child pid=28660 name=Amazon Music.exe
+    child pid=16380 name=Amazon Music.exe
+    child pid=5432 name=Amazon Music.exe
+    child pid=6620 name=Amazon Music.exe
+  pid=28660 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=crashpad-handler /prefetch:7 --max-uploads=5 --max-db-size=15 --max-db-age=5 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\Zanea\AppData\Local\Amazon Music\User Data\Crashpad" "--metrics-dir=C:\Users\Zanea\Ap...(truncated)
+  pid=16380 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=gpu-process --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --no-sandbox --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --log-se...(truncated)
+  pid=5432 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=utility --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --lang=en-US --service-sandbox-type=network --no-sandbox --log-file="C:\Users\Zanea\AppData\Local...(truncated)
+  pid=6620 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=renderer --no-sandbox --enable-accessibility-object-model --enable-touch-drag-drop --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --remote-debugging-port=9222 --field-trial-handle=1968,4811524519358775796,56...(truncated)
+  pid=13020 ppid=6320 name=powershell.exe
+    cmd="C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File C:\Robotics\AMAZING-MUSIC\scripts\run-native-recon.ps1 -ProcessName "Amazon Music.exe" -DurationSeconds 30
+
+=== timed-snapshot-10s ===
+ts: 2026-03-19T13:49:21.0168351-07:00
+count: 6
+  pid=19364 ppid=16012 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --remote-debugging-port=9222
+    child pid=28660 name=Amazon Music.exe
+    child pid=16380 name=Amazon Music.exe
+    child pid=5432 name=Amazon Music.exe
+    child pid=6620 name=Amazon Music.exe
+  pid=28660 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=crashpad-handler /prefetch:7 --max-uploads=5 --max-db-size=15 --max-db-age=5 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\Zanea\AppData\Local\Amazon Music\User Data\Crashpad" "--metrics-dir=C:\Users\Zanea\Ap...(truncated)
+  pid=16380 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=gpu-process --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --no-sandbox --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --log-se...(truncated)
+  pid=5432 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=utility --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --lang=en-US --service-sandbox-type=network --no-sandbox --log-file="C:\Users\Zanea\AppData\Local...(truncated)
+  pid=6620 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=renderer --no-sandbox --enable-accessibility-object-model --enable-touch-drag-drop --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --remote-debugging-port=9222 --field-trial-handle=1968,4811524519358775796,56...(truncated)
+  pid=13020 ppid=6320 name=powershell.exe
+    cmd="C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File C:\Robotics\AMAZING-MUSIC\scripts\run-native-recon.ps1 -ProcessName "Amazon Music.exe" -DurationSeconds 30
+
+=== timed-snapshot-12s ===
+ts: 2026-03-19T13:49:24.1196802-07:00
+count: 6
+  pid=19364 ppid=16012 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --remote-debugging-port=9222
+    child pid=28660 name=Amazon Music.exe
+    child pid=16380 name=Amazon Music.exe
+    child pid=5432 name=Amazon Music.exe
+    child pid=6620 name=Amazon Music.exe
+  pid=28660 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=crashpad-handler /prefetch:7 --max-uploads=5 --max-db-size=15 --max-db-age=5 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\Zanea\AppData\Local\Amazon Music\User Data\Crashpad" "--metrics-dir=C:\Users\Zanea\Ap...(truncated)
+  pid=16380 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=gpu-process --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --no-sandbox --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --log-se...(truncated)
+  pid=5432 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=utility --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --lang=en-US --service-sandbox-type=network --no-sandbox --log-file="C:\Users\Zanea\AppData\Local...(truncated)
+  pid=6620 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=renderer --no-sandbox --enable-accessibility-object-model --enable-touch-drag-drop --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --remote-debugging-port=9222 --field-trial-handle=1968,4811524519358775796,56...(truncated)
+  pid=13020 ppid=6320 name=powershell.exe
+    cmd="C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File C:\Robotics\AMAZING-MUSIC\scripts\run-native-recon.ps1 -ProcessName "Amazon Music.exe" -DurationSeconds 30
+
+=== timed-snapshot-14s ===
+ts: 2026-03-19T13:49:26.9731613-07:00
+count: 6
+  pid=19364 ppid=16012 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --remote-debugging-port=9222
+    child pid=28660 name=Amazon Music.exe
+    child pid=16380 name=Amazon Music.exe
+    child pid=5432 name=Amazon Music.exe
+    child pid=6620 name=Amazon Music.exe
+  pid=28660 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=crashpad-handler /prefetch:7 --max-uploads=5 --max-db-size=15 --max-db-age=5 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\Zanea\AppData\Local\Amazon Music\User Data\Crashpad" "--metrics-dir=C:\Users\Zanea\Ap...(truncated)
+  pid=16380 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=gpu-process --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --no-sandbox --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --log-se...(truncated)
+  pid=5432 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=utility --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --lang=en-US --service-sandbox-type=network --no-sandbox --log-file="C:\Users\Zanea\AppData\Local...(truncated)
+  pid=6620 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=renderer --no-sandbox --enable-accessibility-object-model --enable-touch-drag-drop --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --remote-debugging-port=9222 --field-trial-handle=1968,4811524519358775796,56...(truncated)
+  pid=13020 ppid=6320 name=powershell.exe
+    cmd="C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File C:\Robotics\AMAZING-MUSIC\scripts\run-native-recon.ps1 -ProcessName "Amazon Music.exe" -DurationSeconds 30
+
+=== timed-snapshot-16s ===
+ts: 2026-03-19T13:49:29.8960854-07:00
+count: 6
+  pid=19364 ppid=16012 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --remote-debugging-port=9222
+    child pid=28660 name=Amazon Music.exe
+    child pid=16380 name=Amazon Music.exe
+    child pid=5432 name=Amazon Music.exe
+    child pid=6620 name=Amazon Music.exe
+  pid=28660 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=crashpad-handler /prefetch:7 --max-uploads=5 --max-db-size=15 --max-db-age=5 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\Zanea\AppData\Local\Amazon Music\User Data\Crashpad" "--metrics-dir=C:\Users\Zanea\Ap...(truncated)
+  pid=16380 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=gpu-process --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --no-sandbox --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --log-se...(truncated)
+  pid=5432 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=utility --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --lang=en-US --service-sandbox-type=network --no-sandbox --log-file="C:\Users\Zanea\AppData\Local...(truncated)
+  pid=6620 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=renderer --no-sandbox --enable-accessibility-object-model --enable-touch-drag-drop --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --remote-debugging-port=9222 --field-trial-handle=1968,4811524519358775796,56...(truncated)
+  pid=13020 ppid=6320 name=powershell.exe
+    cmd="C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File C:\Robotics\AMAZING-MUSIC\scripts\run-native-recon.ps1 -ProcessName "Amazon Music.exe" -DurationSeconds 30
+
+=== timed-snapshot-18s ===
+ts: 2026-03-19T13:49:33.0139557-07:00
+count: 6
+  pid=19364 ppid=16012 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --remote-debugging-port=9222
+    child pid=28660 name=Amazon Music.exe
+    child pid=16380 name=Amazon Music.exe
+    child pid=5432 name=Amazon Music.exe
+    child pid=6620 name=Amazon Music.exe
+  pid=28660 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=crashpad-handler /prefetch:7 --max-uploads=5 --max-db-size=15 --max-db-age=5 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\Zanea\AppData\Local\Amazon Music\User Data\Crashpad" "--metrics-dir=C:\Users\Zanea\Ap...(truncated)
+  pid=16380 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=gpu-process --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --no-sandbox --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --log-se...(truncated)
+  pid=5432 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=utility --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --lang=en-US --service-sandbox-type=network --no-sandbox --log-file="C:\Users\Zanea\AppData\Local...(truncated)
+  pid=6620 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=renderer --no-sandbox --enable-accessibility-object-model --enable-touch-drag-drop --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --remote-debugging-port=9222 --field-trial-handle=1968,4811524519358775796,56...(truncated)
+  pid=13020 ppid=6320 name=powershell.exe
+    cmd="C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File C:\Robotics\AMAZING-MUSIC\scripts\run-native-recon.ps1 -ProcessName "Amazon Music.exe" -DurationSeconds 30
+
+=== timed-snapshot-20s ===
+ts: 2026-03-19T13:49:36.1654674-07:00
+count: 6
+  pid=19364 ppid=16012 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --remote-debugging-port=9222
+    child pid=28660 name=Amazon Music.exe
+    child pid=16380 name=Amazon Music.exe
+    child pid=5432 name=Amazon Music.exe
+    child pid=6620 name=Amazon Music.exe
+  pid=28660 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=crashpad-handler /prefetch:7 --max-uploads=5 --max-db-size=15 --max-db-age=5 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\Zanea\AppData\Local\Amazon Music\User Data\Crashpad" "--metrics-dir=C:\Users\Zanea\Ap...(truncated)
+  pid=16380 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=gpu-process --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --no-sandbox --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --log-se...(truncated)
+  pid=5432 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=utility --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --lang=en-US --service-sandbox-type=network --no-sandbox --log-file="C:\Users\Zanea\AppData\Local...(truncated)
+  pid=6620 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=renderer --no-sandbox --enable-accessibility-object-model --enable-touch-drag-drop --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --remote-debugging-port=9222 --field-trial-handle=1968,4811524519358775796,56...(truncated)
+  pid=13020 ppid=6320 name=powershell.exe
+    cmd="C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File C:\Robotics\AMAZING-MUSIC\scripts\run-native-recon.ps1 -ProcessName "Amazon Music.exe" -DurationSeconds 30
+
+=== timed-snapshot-22s ===
+ts: 2026-03-19T13:49:39.2938684-07:00
+count: 6
+  pid=19364 ppid=16012 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --remote-debugging-port=9222
+    child pid=28660 name=Amazon Music.exe
+    child pid=16380 name=Amazon Music.exe
+    child pid=5432 name=Amazon Music.exe
+    child pid=6620 name=Amazon Music.exe
+  pid=28660 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=crashpad-handler /prefetch:7 --max-uploads=5 --max-db-size=15 --max-db-age=5 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\Zanea\AppData\Local\Amazon Music\User Data\Crashpad" "--metrics-dir=C:\Users\Zanea\Ap...(truncated)
+  pid=16380 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=gpu-process --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --no-sandbox --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --log-se...(truncated)
+  pid=5432 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=utility --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --lang=en-US --service-sandbox-type=network --no-sandbox --log-file="C:\Users\Zanea\AppData\Local...(truncated)
+  pid=6620 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=renderer --no-sandbox --enable-accessibility-object-model --enable-touch-drag-drop --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --remote-debugging-port=9222 --field-trial-handle=1968,4811524519358775796,56...(truncated)
+  pid=13020 ppid=6320 name=powershell.exe
+    cmd="C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File C:\Robotics\AMAZING-MUSIC\scripts\run-native-recon.ps1 -ProcessName "Amazon Music.exe" -DurationSeconds 30
+
+=== timed-snapshot-24s ===
+ts: 2026-03-19T13:49:42.4092961-07:00
+count: 6
+  pid=19364 ppid=16012 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --remote-debugging-port=9222
+    child pid=28660 name=Amazon Music.exe
+    child pid=16380 name=Amazon Music.exe
+    child pid=5432 name=Amazon Music.exe
+    child pid=6620 name=Amazon Music.exe
+  pid=28660 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=crashpad-handler /prefetch:7 --max-uploads=5 --max-db-size=15 --max-db-age=5 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\Zanea\AppData\Local\Amazon Music\User Data\Crashpad" "--metrics-dir=C:\Users\Zanea\Ap...(truncated)
+  pid=16380 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=gpu-process --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --no-sandbox --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --log-se...(truncated)
+  pid=5432 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=utility --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --lang=en-US --service-sandbox-type=network --no-sandbox --log-file="C:\Users\Zanea\AppData\Local...(truncated)
+  pid=6620 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=renderer --no-sandbox --enable-accessibility-object-model --enable-touch-drag-drop --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --remote-debugging-port=9222 --field-trial-handle=1968,4811524519358775796,56...(truncated)
+  pid=13020 ppid=6320 name=powershell.exe
+    cmd="C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File C:\Robotics\AMAZING-MUSIC\scripts\run-native-recon.ps1 -ProcessName "Amazon Music.exe" -DurationSeconds 30
+
+=== timed-snapshot-26s ===
+ts: 2026-03-19T13:49:45.5567984-07:00
+count: 6
+  pid=19364 ppid=16012 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --remote-debugging-port=9222
+    child pid=28660 name=Amazon Music.exe
+    child pid=16380 name=Amazon Music.exe
+    child pid=5432 name=Amazon Music.exe
+    child pid=6620 name=Amazon Music.exe
+  pid=28660 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=crashpad-handler /prefetch:7 --max-uploads=5 --max-db-size=15 --max-db-age=5 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\Zanea\AppData\Local\Amazon Music\User Data\Crashpad" "--metrics-dir=C:\Users\Zanea\Ap...(truncated)
+  pid=16380 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=gpu-process --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --no-sandbox --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --log-se...(truncated)
+  pid=5432 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=utility --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --lang=en-US --service-sandbox-type=network --no-sandbox --log-file="C:\Users\Zanea\AppData\Local...(truncated)
+  pid=6620 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=renderer --no-sandbox --enable-accessibility-object-model --enable-touch-drag-drop --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --remote-debugging-port=9222 --field-trial-handle=1968,4811524519358775796,56...(truncated)
+  pid=13020 ppid=6320 name=powershell.exe
+    cmd="C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File C:\Robotics\AMAZING-MUSIC\scripts\run-native-recon.ps1 -ProcessName "Amazon Music.exe" -DurationSeconds 30
+
+=== timed-snapshot-28s ===
+ts: 2026-03-19T13:49:48.7258023-07:00
+count: 6
+  pid=19364 ppid=16012 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --remote-debugging-port=9222
+    child pid=28660 name=Amazon Music.exe
+    child pid=16380 name=Amazon Music.exe
+    child pid=5432 name=Amazon Music.exe
+    child pid=6620 name=Amazon Music.exe
+  pid=28660 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=crashpad-handler /prefetch:7 --max-uploads=5 --max-db-size=15 --max-db-age=5 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\Zanea\AppData\Local\Amazon Music\User Data\Crashpad" "--metrics-dir=C:\Users\Zanea\Ap...(truncated)
+  pid=16380 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=gpu-process --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --no-sandbox --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --log-se...(truncated)
+  pid=5432 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=utility --field-trial-handle=1968,4811524519358775796,5657793780675414837,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --lang=en-US --service-sandbox-type=network --no-sandbox --log-file="C:\Users\Zanea\AppData\Local...(truncated)
+  pid=6620 ppid=19364 name=Amazon Music.exe
+    cmd="C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=renderer --no-sandbox --enable-accessibility-object-model --enable-touch-drag-drop --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --remote-debugging-port=9222 --field-trial-handle=1968,4811524519358775796,56...(truncated)
+  pid=13020 ppid=6320 name=powershell.exe
+    cmd="C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File C:\Robotics\AMAZING-MUSIC\scripts\run-native-recon.ps1 -ProcessName "Amazon Music.exe" -DurationSeconds 30
+
+=== audio-related-dll-hints ===
+

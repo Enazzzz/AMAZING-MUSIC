@@ -30,6 +30,23 @@ interface PendingRequest {
 }
 
 /**
+ * Defines a generic CDP command payload.
+ */
+interface CommandRequest {
+	id: number;
+	method: string;
+	params?: Record<string, unknown>;
+}
+
+/**
+ * Defines a routed CDP event frame.
+ */
+interface EventFrame {
+	method: string;
+	params?: Record<string, unknown>;
+}
+
+/**
  * Builds a Runtime.evaluate request object for CDP.
  */
 function buildEvaluateRequest(id: number, expression: string): EvaluateRequest {
@@ -82,6 +99,7 @@ export class CdpClient {
 	private socket: WebSocket | null = null;
 	private readonly pending = new Map<number, PendingRequest>();
 	private readonly onDisconnectListeners = new Set<() => void>();
+	private readonly eventListeners = new Set<(event: EventFrame) => void>();
 	private nextMessageId = 1;
 	private readonly debugPort: number;
 
@@ -127,32 +145,27 @@ export class CdpClient {
 	 * Evaluates a JavaScript expression inside the Morpho runtime.
 	 */
 	public async evaluate(expression: string, timeoutMs = 8000): Promise<unknown> {
-		if (!this.socket) {
-			throw new Error("CDP client is not connected.");
-		}
-		const id = this.nextMessageId;
-		this.nextMessageId += 1;
-		const request = buildEvaluateRequest(id, expression);
-		const responsePromise = new Promise<unknown>((resolve, reject) => {
-			const timeout = setTimeout(() => {
-				this.pending.delete(id);
-				reject(new Error(`CDP request ${id} timed out after ${timeoutMs}ms.`));
-			}, timeoutMs);
-			this.pending.set(id, { resolve, reject, timeout });
-		});
-		this.socket.send(JSON.stringify(request), (error) => {
-			if (!error) {
-				return;
-			}
-			const pending = this.pending.get(id);
-			if (!pending) {
-				return;
-			}
-			clearTimeout(pending.timeout);
-			this.pending.delete(id);
-			pending.reject(error);
-		});
-		return responsePromise;
+		const request = buildEvaluateRequest(0, expression);
+		return this.sendRequest(request, timeoutMs);
+	}
+
+	/**
+	 * Sends a raw CDP command and resolves with the command result object.
+	 */
+	public async sendCommand(method: string, params?: Record<string, unknown>, timeoutMs = 8000): Promise<unknown> {
+		const requestId = this.nextMessageId;
+		const request: CommandRequest = { id: requestId, method, params };
+		return this.sendRequest(request, timeoutMs);
+	}
+
+	/**
+	 * Registers a callback for CDP event frames (messages without id).
+	 */
+	public onEvent(listener: (event: EventFrame) => void): () => void {
+		this.eventListeners.add(listener);
+		return () => {
+			this.eventListeners.delete(listener);
+		};
 	}
 
 	/**
@@ -197,6 +210,16 @@ export class CdpClient {
 		}
 		const messageId = (frame as { id?: number }).id;
 		if (typeof messageId !== "number") {
+			const eventMethod = (frame as { method?: string }).method;
+			if (typeof eventMethod === "string") {
+				const eventFrame: EventFrame = {
+					method: eventMethod,
+					params: (frame as { params?: Record<string, unknown> }).params,
+				};
+				for (const listener of this.eventListeners) {
+					listener(eventFrame);
+				}
+			}
 			return;
 		}
 		const pending = this.pending.get(messageId);
@@ -212,6 +235,38 @@ export class CdpClient {
 		}
 		const value = (frame as { result?: { result?: { value?: unknown } } }).result?.result?.value ?? null;
 		pending.resolve(value);
+	}
+
+	/**
+	 * Sends a JSON CDP request and manages pending-timeout lifecycle.
+	 */
+	private async sendRequest(request: CommandRequest, timeoutMs: number): Promise<unknown> {
+		if (!this.socket) {
+			throw new Error("CDP client is not connected.");
+		}
+		const id = this.nextMessageId;
+		this.nextMessageId += 1;
+		request.id = id;
+		const responsePromise = new Promise<unknown>((resolve, reject) => {
+			const timeout = setTimeout(() => {
+				this.pending.delete(id);
+				reject(new Error(`CDP request ${id} timed out after ${timeoutMs}ms.`));
+			}, timeoutMs);
+			this.pending.set(id, { resolve, reject, timeout });
+		});
+		this.socket.send(JSON.stringify(request), (error) => {
+			if (!error) {
+				return;
+			}
+			const pending = this.pending.get(id);
+			if (!pending) {
+				return;
+			}
+			clearTimeout(pending.timeout);
+			this.pending.delete(id);
+			pending.reject(error);
+		});
+		return responsePromise;
 	}
 
 	/**

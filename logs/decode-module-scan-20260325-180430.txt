@@ -1,0 +1,50 @@
+﻿decode-module-scan start: 2026-03-25T18:04:30.7668627-07:00
+AmazonInstallPath: C:\Users\Zanea\AppData\Local\Amazon Music
+
+=== extra dll hints (name filter) ===
+av.dll
+
+using dumpbin: C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\dumpbin.exe
+
+=== dmengine.dll ===
+path: C:\Users\Zanea\AppData\Local\Amazon Music\dmengine.dll
+(no lines matched filter; module may use only private symbols or delay-load)
+
+=== av.dll ===
+path: C:\Users\Zanea\AppData\Local\Amazon Music\av.dll
+--- matching exports / lines ---
+          9    8 00006235 av_frame_alloc
+         10    9 00001B6D av_frame_free
+         11    A 00004534 av_frame_get_buffer
+         12    B 00004507 av_frame_make_writable
+         13    C 000038B4 av_frame_ref
+         14    D 00001DD9 av_frame_unref
+         26   19 0000514B av_packet_ref
+         27   1A 00006816 av_packet_unref
+         35   22 00001843 avcodec_alloc_context3
+         36   23 000021B2 avcodec_close
+         37   24 00005196 avcodec_copy_context
+         38   25 00002928 avcodec_decode_audio4
+         39   26 00003D73 avcodec_descriptor_get
+         40   27 00004D0E avcodec_fill_audio_frame
+         41   28 00006569 avcodec_find_decoder
+         42   29 00005C63 avcodec_flush_buffers
+         43   2A 00005CF4 avcodec_free_context
+         44   2B 00001FCD avcodec_get_name
+         45   2C 000011EA avcodec_open2
+         46   2D 00002A86 avcodec_parameters_alloc
+         47   2E 00001F91 avcodec_parameters_free
+         48   2F 0000647E avcodec_receive_frame
+         49   30 00001A9B avcodec_send_packet
+         61   3C 00001FD7 avformat_alloc_context
+         62   3D 0000384B avformat_close_input
+         63   3E 00005A33 avformat_find_stream_info
+         64   3F 000026AD avformat_flush
+         65   40 000048D1 avformat_free_context
+         66   41 00002324 avformat_open_input
+
+=== Amazon Music.exe ===
+path: C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe
+--- matching exports / lines ---
+        367  16E 005CAAC0 ??1?$singleton@V?$extended_type_info_typeid@UHideFromMostRecentEntry@Nimbly@Morpho@@@serialization@boost@@@serialization@boost@@QAE@XZ
+

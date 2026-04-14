@@ -35,6 +35,12 @@ Practical implication:
 - On many installs, launching a second Amazon Music process focuses the existing window instead of creating a second independent instance.
 - For local sync testing, a fake host websocket client is often more reliable than trying to run two real Amazon instances.
 
+### Native audio path (music tempo / pitch)
+
+- Harley logs (`AudioPipeline.cpp`, `PlaybackEngine.cpp`, `DASH*`, `Widevine*`) show **decrypt, decode, and queueing in native code**, not in the renderer’s WebAudio graph.
+- For **music**, `Player.setTempo` is often a dead end. The surface that behaves like a **real desktop player** is **`AudioPipeline` queue timing → mix → device** (where PCM is already aligned to **presentation time** and fed toward **WASAPI**).
+- **§18** prioritizes that **mix / device** stage; `scripts/scan-decode-modules.ps1` is optional if you ever want an **earlier** libav tap in `av.dll`.
+
 ---
 
 ## 1. Launching with Debug Access
@@ -560,8 +566,8 @@ Install location: `%LOCALAPPDATA%\Amazon Music\`
 | `Amazon Music.exe`      | Main executable — CEF host      |
 | `libcef.dll`            | Chromium Embedded Framework     |
 | `QtCore4.dll`           | Qt4 native shell (very old)     |
-| `dmengine.dll`          | DRM/media engine — do not touch |
-| `av.dll`                | Audio/video processing          |
+| `dmengine.dll`          | Harley **Digital Music Playback Engine** (native DASH + decode path) |
+| `av.dll`                | Audio/video helper / companion native module                  |
 | `tag.dll` / `tag_c.dll` | TagLib — music metadata         |
 | `Data/`                 | App data, possibly SQLite       |
 | `LibraryDump/`          | Dumped library metadata         |
@@ -740,7 +746,61 @@ This document is self-contained so that a Cursor (or other) agent in a **differe
 
 ---
 
-## 18. Project File Map
+## 18. Native hooking (Windows) — AudioPipeline, mix, device
+
+This section is **research-only**: personal debugging on your own machine. Do not use it to bypass DRM, capture redistributable audio, or break Amazon Music ToS at scale.
+
+### Preferred surface: decode → **mix → device**
+
+Commercial players usually change **audible speed/pitch** by acting on **PCM that is already framed for output**, or on the **clock / queue that decides how fast that PCM is drained**—not on encrypted network blobs.
+
+For Harley, your logs already separate concerns:
+
+| Stage | You see in logs | Hooking mindset |
+|---|---|---|
+| Network | `DASHRangeFragmentLoader`, `HarleyHttpClient`, CloudFront `.mp4` | Still ciphertext; poor tempo control |
+| Decrypt/bind | `DASHFragmentLoader`, Widevine “keys available” | Crypto/session plumbing |
+| **Engine queue / pipeline** | **`AudioPipeline.cpp`** (`Starting playback`, `Track Initialization Succeeded`, defer seek, “already playing”) | **Best ROI**: PCM ring or timestamped buffer **before** WASAPI |
+| **Device** | Often `AUDIODG*.dll`, `MMDevAPI`, `AudioSes` in the same process (`tasklist /m` while playing) | **Late but stable**: `IAudioRenderClient::GetBuffer` / `ReleaseBuffer` (hook only after you confirm call sites) |
+
+**Primary research target:** `dmengine.dll`, using **`AudioPipeline.cpp` log format strings** as Ghidra/x64dbg xrefs. Follow callees **forward** until you see handoff to **Windows audio** (COM interfaces or `audioses`/`mmdevapi` thunks) or a **mix function** that consumes **timestamped frames**. That function (or the struct it walks) is where **tempo** is usually expressed as **resample ratio**, **pull amount**, or **presentation timestamp skip**.
+
+`harley.conf.json` gives you behavioral hints for the **queue** side: `harley.frameQueue.*`, `harley.audioDriver.latencyMS`, `harley.device.preferredSampleRate` — useful for naming and for knowing what “one buffer” means when you trace.
+
+### Suggested workflow (mix/device first)
+
+1. **Verbose engine logs**: raise `harley.logging.engine` (and optionally `harley.logging.ffmpeg`) while playing **music**; you want lines that mention **underrun, buffer, frame queue, latency, mixer**, not only DASH fetch.
+2. **Static pass (`dmengine.dll`)**: xref strings from your log lines (`[AudioPipeline.cpp`, `[PlaybackEngine.cpp`). Prioritize paths between **`Track Initialization Succeeded`** semantics and **audio output** setup—not `DASHRangeFragmentLoader`.
+3. **Modules while playing**: run `npm run recon:audio-pipeline` (or `scripts/run-audio-pipeline-recon.ps1`) with Amazon **actively playing**. The script **relaunches under 32-bit PowerShell** if needed (WOW64: 64-bit hosts only see the WOW64 stub DLLs). It flags PIDs that load both **`dmengine.dll`** and **mix/device DLLs** (`MMDevAPI`, `AudioSes`, `mfplat`, etc.) in the same process—your first attach target for **AudioPipeline → device** (usually the **main** PID without `--type=`, where bridge + Harley meet; confirm against your log).
+4. **Dynamic pass**: breakpoint on **one** internal “submit N samples” or “mix” routine identified in step 2 **before** touching WASAPI-wide hooks. WASAPI-level detours affect **all** streams in the client; they are powerful but noisy.
+5. **Tempo/pitch**: once you have the **mix buffer** (float PCM + channel count + sample rate from your earlier `Audio Attributes updated` logs), apply **resampler / time-stretch** there, or adjust **how many samples the pipeline pulls per tick** (clock side). Both match how real players behave; choose the site with the **smallest** call fan-in.
+
+### Optional earlier tap: `av.dll` / libav decode
+
+On some installs **`av.dll` exports** `avcodec_send_packet`, `avcodec_receive_frame`, `avcodec_decode_audio4`, etc. That is an **earlier** PCM tap (per codec frame, more format churn). Use it only if the **AudioPipeline** path is too opaque; it is **not** the “player-like” layer you asked for.
+
+`scripts/scan-decode-modules.ps1` writes `logs/decode-module-scan-*.txt` for that optional path (needs MSVC `dumpbin`).
+
+### Why mix/device beats raw network and often beats “decode only”
+
+| Layer | Encrypted? | Player-like rate change? |
+|---|---|---|
+| CloudFront fetch | Yes | No |
+| libav `avcodec_receive_frame` (`av.dll`) | No | **Possible**, but **codec-framed**; still upstream of crossfade/gapless/metering |
+| **AudioPipeline / mix queue** | No | **Yes** — same stage where gapless and **device sample rate** meet |
+| **WASAPI `GetBuffer`** | No | **Yes**, but affects **everything**; use as fallback |
+
+### Repo tooling
+
+| Path | Purpose |
+|---|---|
+| `scripts/run-audio-pipeline-recon.ps1` | **AudioPipeline path**: which PID has `dmengine` + Core Audio / WASAPI-related DLLs |
+| `scripts/run-native-recon.ps1` | Process tree + `tasklist /m` snapshots over time |
+| `scripts/scan-decode-modules.ps1` | Optional `dumpbin /exports` on `av.dll` / `dmengine.dll` |
+
+---
+
+## 19. Project File Map
 
 | Path | Purpose |
 |---|---|
@@ -761,3 +821,6 @@ This document is self-contained so that a Cursor (or other) agent in a **differe
 | `tests/dev-next.ts` | Standalone test: DOM button click via CDP |
 | `exported/app.js` | Extracted Amazon Music webpack bundle (reference) |
 | `exported/html.html` | Extracted Amazon Music UI HTML (reference) |
+| `scripts/scan-decode-modules.ps1` | `dumpbin /exports` scan for decode/FFmpeg-related symbols |
+| `scripts/run-native-recon.ps1` | Process tree + `tasklist /m` module snapshots |
+| `scripts/run-audio-pipeline-recon.ps1` | Find PID for AudioPipeline → mix/device (dmengine + audio stack DLLs) |

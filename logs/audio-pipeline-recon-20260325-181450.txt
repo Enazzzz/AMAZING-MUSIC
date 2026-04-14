@@ -1,0 +1,69 @@
+﻿audio-pipeline-recon start: 2026-03-25T18:14:50.5967409-07:00
+ProcessImageName: Amazon Music.exe
+
+TIP: Start music playback first; audio DLLs may load only after the graph opens.
+
+=== PID 27748 ===
+ParentProcessId: 15928
+CommandLine: "C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --remote-debugging-port=9222
+--- highlighted modules (pipeline / device / engine) ---
+  audioses.dll
+  av.dll
+  dmengine.dll
+  libcef.dll
+  mfplat.dll
+  mmdevapi.dll
+  winmm.dll
+--- total modules loaded: 154 ---
+
+=== PID 18080 ===
+ParentProcessId: 27748
+CommandLine: "C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=crashpad-handler /prefetch:7 --max-uploads=5 --max-db-size=15 --max-db-age=5 --monitor-self-annotation=ptype=crashpad-handler "--database=C:\Users\Zanea\AppData\Local\Amazon Music\User Data\Crashpad" "--metrics-dir=C:\Users\Zanea\AppData\Local\Amazon Music\User Data" --annotation=platform=win32 "--annotation=product=Amazon Music" --annotation=version=9.5.2.2478 --initial-client-data=0x4fc,0x500,0x504,0x4f8,0x508,0x65f65780,0x65f...(truncated)
+--- highlighted modules (pipeline / device / engine) ---
+  av.dll
+  dmengine.dll
+  libcef.dll
+  winmm.dll
+--- total modules loaded: 97 ---
+
+=== PID 17300 ===
+ParentProcessId: 27748
+CommandLine: "C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=gpu-process --field-trial-handle=2000,8117378950548107067,7137933591148135494,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --no-sandbox --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --log-severity=info --user-agent="Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko)  Morpho/9.5.2.2478 Safari/537.36" --lang=en_US --gpu-preferences=KAAAAAAAAADoAAAwAAAAAAAAYAAAAAAAE...(truncated)
+--- highlighted modules (pipeline / device / engine) ---
+  av.dll
+  dmengine.dll
+  libcef.dll
+  mfplat.dll
+  winmm.dll
+--- total modules loaded: 133 ---
+
+=== PID 18140 ===
+ParentProcessId: 27748
+CommandLine: "C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=utility --field-trial-handle=2000,8117378950548107067,7137933591148135494,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --lang=en-US --service-sandbox-type=network --no-sandbox --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --log-severity=info --user-agent="Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko)  Morpho/9.5.2.2478 Safari/537.36" --lang=en_US --log-file=...(truncated)
+--- highlighted modules (pipeline / device / engine) ---
+  av.dll
+  dmengine.dll
+  libcef.dll
+  winmm.dll
+--- total modules loaded: 114 ---
+
+=== PID 8352 ===
+ParentProcessId: 27748
+CommandLine: "C:\Users\Zanea\AppData\Local\Amazon Music\Amazon Music.exe" --type=renderer --no-sandbox --enable-accessibility-object-model --enable-touch-drag-drop --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --remote-debugging-port=9222 --field-trial-handle=2000,8117378950548107067,7137933591148135494,131072 --disable-features=MimeHandlerViewInCrossProcessFrame --lang=en-US --log-file="C:\Users\Zanea\AppData\Local\Amazon Music\Logs\cef_log.txt" --log-severity=info --user-agent="Mo...(truncated)
+--- highlighted modules (pipeline / device / engine) ---
+  audioses.dll
+  av.dll
+  dmengine.dll
+  libcef.dll
+  mfplat.dll
+  mmdevapi.dll
+  winmm.dll
+--- total modules loaded: 113 ---
+
+=== heuristic: AudioPipeline + mix/device candidates ===
+Prefer PIDs where dmengine.dll AND (MMDevAPI / AudioSes / mfplat) appear in the same process.
+  *** PID 27748 : dmengine + mix/device DLLs ***
+  PID 18080 : dmengine only (mix DLLs may delay-load or another PID)
+  *** PID 17300 : dmengine + mix/device DLLs ***
+  PID 18140 : dmengine only (mix DLLs may delay-load or another PID)
+  *** PID 8352 : dmengine + mix/device DLLs ***
